@@ -1,8 +1,6 @@
 /*
  * This file contains definitions for running the IcosaLogic inverter on the Adafruit Grand
  * Central M4 board.
- * 
- * Incomplete -- see ADC TODO below
  */
  
 #ifdef _VARIANT_GRAND_CENTRAL_M4_

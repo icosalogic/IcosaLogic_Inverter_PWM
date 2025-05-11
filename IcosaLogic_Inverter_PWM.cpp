@@ -181,12 +181,10 @@ void IcosaLogic_Inverter_PWM::setupInput(I20InputParams* inParams) {
   Serial.printf("vOut %d  numLines %d  outFreq %d  pwmFreq %d\n",
                 inParams->outRmsVoltage, inParams->numLines, inParams->outFreq, inParams->pwmFreq);
   Serial.flush();
-  Serial.printf("    tccCfgNdx1 %d [%s]  tccCfgNdx2 %d [%s]  deadTimeNs %d  ",
+  Serial.printf("    tccCfgNdx1 %d [%s]  tccCfgNdx2 %d [%s]  deadTimeNs %d\n",
                 inParams->tccCfgNdx1, I20TccCfgName[inParams->tccCfgNdx1],
                 inParams->tccCfgNdx2, I20TccCfgName[inParams->tccCfgNdx2], inParams->deadTimeNs);
   Serial.flush();
-  Serial.printf("adcPrescale %d  adcSampleTicks %d\n",
-                inParams->adcPrescaleVal, inParams->adcSampleTicks);
   
   uint32_t pwmCpuTicks = CPU_Freq / inParams->pwmFreq;
   double   pwmUs = 1e6 / (double) inParams->pwmFreq;
@@ -200,6 +198,9 @@ void IcosaLogic_Inverter_PWM::setupInput(I20InputParams* inParams) {
     memcpy(&feedbackBuf, inParams->feedback, sizeof(I20Feedback));
     feedback = &feedbackBuf;
     inputParams.feedback = feedback;
+    
+    Serial.printf("    adcPrescale %d  adcSampleTicks %d\n",
+                  feedback->adcPrescaleVal, feedback->adcSampleTicks);
   }
   maxThrottle   = defaultMaxThrottle;
 }
@@ -887,7 +888,7 @@ void IcosaLogic_Inverter_PWM::setupAdcBitSize() {
   bool bitSizeValid = false;
   for (int i = 0; i < numAdcResultSizeEntries; i++) {
     AdcResultSizeEntry* p = &(adcResultSize[i]);
-    if (p->numBits == inputParams.adcNumBits) {
+    if (p->numBits == inputParams.feedback->adcNumBits) {
       curAdcResultSizeEntry = p;
       bitSizeValid = true;
       break;
@@ -906,12 +907,14 @@ void IcosaLogic_Inverter_PWM::setupAdcBitSize() {
 void IcosaLogic_Inverter_PWM::setupAdcInitCfg() {
   // Serial.printf("setupAdcInitCfg: enter\n");
 
+  I20Feedback *fb = inputParams.feedback;
+  
   // Validate prescale value
   bool prescaleValid = false;
   for (int i = 0; i < 8; i++) {
-    if (inputParams.adcPrescaleVal == AdcClockPrescaleOptions[i]) {
+    if (fb->adcPrescaleVal == AdcClockPrescaleOptions[i]) {
       prescaleValid = true;
-      AdcClockPrescale = inputParams.adcPrescaleVal;                   // Divide GCLK by this value
+      AdcClockPrescale = fb->adcPrescaleVal;                   // Divide GCLK by this value
       AdcClockPrescaleCfg = i;
     }
   }
@@ -921,7 +924,7 @@ void IcosaLogic_Inverter_PWM::setupAdcInitCfg() {
   }
   
   // Validate adcSampleTicks
-  if (inputParams.adcSampleTicks == 0 || inputParams.adcSampleTicks > 64) {
+  if (fb->adcSampleTicks == 0 || fb->adcSampleTicks > 64) {
     setError(I20_ERR_INVALID_ADC_SAMPLE_TICKS);
     return;
   }
@@ -938,7 +941,7 @@ void IcosaLogic_Inverter_PWM::setupAdcInitCfg() {
 		adc->CTRLB.bit.RESSEL = curAdcResultSizeEntry->cfgValue; // set ADC result bit size
 		while (adc->SYNCBUSY.bit.CTRLB);                         // wait for sync
 
-		adc->SAMPCTRL.reg = inputParams.adcSampleTicks - 1;      // sampling Time Length
+		adc->SAMPCTRL.reg = fb->adcSampleTicks - 1;              // sampling Time Length
 		while (adc->SYNCBUSY.bit.SAMPCTRL);                      // wait for sync
     
     NVIC_SetPriority(adcIrqs[i], adcInterruptPriority);      // enable result ready interrupt
@@ -946,8 +949,8 @@ void IcosaLogic_Inverter_PWM::setupAdcInitCfg() {
     adc->INTENSET.bit.RESRDY = 1;
 	}
   
-	analogReference(inputParams.adcVRefNdx);                   // specify the AREF value
-  adcVRef = adcReference[inputParams.adcVRefNdx].refVoltage; // save AREF value for calculations
+	analogReference(fb->adcVRefNdx);                           // specify the AREF value
+  adcVRef = adcReference[fb->adcVRefNdx].refVoltage;         // save AREF value for calculations
 }
 
 /*
@@ -1021,8 +1024,8 @@ void IcosaLogic_Inverter_PWM::setupAdcSchedule() {
   */
   
   // calculate time to perform one ADC conversion
-  float adcFreq = Freq_48MHz / inputParams.adcPrescaleVal;
-  float adcConversionSec = float(inputParams.adcSampleTicks + curAdcResultSizeEntry->numBits) / adcFreq;
+  float adcFreq = Freq_48MHz / inputParams.feedback->adcPrescaleVal;
+  float adcConversionSec = float(inputParams.feedback->adcSampleTicks + curAdcResultSizeEntry->numBits) / adcFreq;
   adcConversionNs = uint32_t(adcConversionSec * 1e9);
   float adcConversionCpuTicks = adcConversionNs / tccNsPerTick;
   Serial.printf("  ADC conversion time %d ns  cpuTicks ", adcConversionNs);
@@ -1732,7 +1735,7 @@ void IcosaLogic_Inverter_PWM::dumpScaledSineData(bool atZero) {
   
   /*
   Serial.printf("ADC Sine Values: numSamples=%d  adcBits=%d  \n",
-                numSamples, inputParams.adcNumBits);
+                numSamples, inputParams.feedback->adcNumBits);
   valuesPerLine = 0;
   for (int i = 0; i < numSamples; i += qSamples) {
     if (valuesPerLine == 0) {

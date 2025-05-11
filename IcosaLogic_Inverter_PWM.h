@@ -146,6 +146,10 @@ typedef struct {
   
 // Feedback mechanism for each output line, and top and midpoint of battery.
 typedef struct {
+  uint8_t            adcNumBits;                // ADC number of bits: 12, 10, or 8
+  uint16_t           adcPrescaleVal;            // ADC clock prescale value
+  uint16_t           adcSampleTicks;            // ADC clock ticks to hold sample
+  eAnalogReference   adcVRefNdx;                // ADC reference
   I20FeedbackSignal* signal[maxNumFbSignals];   // voltage and current feedback
 } I20Feedback;
 
@@ -160,10 +164,6 @@ typedef struct {
   I20TccCfgNdx       tccCfgNdx1;                // Preferred configuration to use, either TCC0 or 1
   I20TccCfgNdx       tccCfgNdx2;                // Second configuration to use, either TCC1 or 0
   uint16_t           deadTimeNs;                // dead time between MOSFET transitions
-  uint8_t            adcNumBits;                // ADC number of bits: 12, 10, or 8
-  uint16_t           adcPrescaleVal;            // ADC clock prescale value
-  uint16_t           adcSampleTicks;            // ADC clock ticks to hold sample
-  eAnalogReference   adcVRefNdx;                // ADC reference
   I20Feedback*       feedback;                  // voltage and current feedback
 } I20InputParams;
 
