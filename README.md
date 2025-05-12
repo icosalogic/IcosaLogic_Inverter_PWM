@@ -60,6 +60,9 @@ The rest of this document is divided into two sections:
 - The Deep Dive section gives more information of the target environment and the rationale and details for the design and implementation of the library
 
 # Quick Start
+
+## Example Inverter Application
+
 Following is the complete program to run an inverter with 1 output line at 60Hz, using a switching
 frequency of 6kHz, and with no voltage or current feedback.
 ```
@@ -109,6 +112,8 @@ void TCC1_0_Handler() {
 };
 ```
 
+## Inverter Object Definition
+
 Here is the basic interface to the library:
 ```
 class IcosaLogic_Inverter_PWM {
@@ -142,6 +147,8 @@ public:
   bool validateLog();
 }
 ```
+
+## Input Parameters
 
 The first objective for a user is to specify the input parameters.
 ```
