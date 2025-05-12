@@ -34,9 +34,10 @@ This implementation is incomplete.
 - The entire library could use a ground-up refactoring
 - The documentation is incomplete (no big surprise)
 
-# Examples
+# Platforms and Example Applications
 Because this library is so intimately tied with the hardware details of both the SAMD51 processor
-on which it runs and the board on which the processor is mounted, each board requires its own example.
+on which it runs and the board on which the processor is mounted, each board may require its own
+example application.
 
 This library has been tested on the following boards:
 - Adafruit ItsyBitsy M4 Express
@@ -65,7 +66,7 @@ The rest of this document is divided into two sections:
 
 Following is the complete program to run an inverter with 1 output line at 60Hz, using a switching
 frequency of 6kHz, and with no voltage or current feedback.
-```
+```C
 /*
  * Minimal inverter for the IcosaLogic inverter library.
  */
@@ -115,7 +116,7 @@ void TCC1_0_Handler() {
 ## Inverter Object Definition
 
 Here is the basic interface to the library:
-```
+```C++
 class IcosaLogic_Inverter_PWM {
 public:
   IcosaLogic_Inverter_PWM();
@@ -148,10 +149,12 @@ public:
 }
 ```
 
-## Input Parameters
+## Configuration
+
+### Input Parameters
 
 The first objective for a user is to specify the input parameters.
-```
+```C++
 typedef struct {
   I20InvArch         invArch;                   // Inverter architecture
   I20HalfWaveSignal  hws;                       // Half wave signal type
@@ -168,41 +171,109 @@ typedef struct {
 
 Each of these parameters is described below.
 
-`invArch` Inverter Architecture
-- `I20_HALF_BRIDGE` Generate PWM signals for a half bridge configuration with 2 MOSFETs per line
-- `I20_T_TYPE` Generate PWM signals for a T-Type inverter with 4 MOSFETs per line
-
-`hws` Half Wave Signal
-- `I20_HWS_NONE` Don't generate a half-wave signal
-- `I20_HWS_SINGLE` Generate a single half wave signal
-- `I20_HWS_PAIR` Generate a pair of opposite half-wave signals, with dead time inserted between transitions
-
-`outRmsVoltage` Target RMS voltage of output<br>
-- This integer number is meaningful only if feedback is used
-
-`numLines` The number of output lines, which determines the number of PWM signals to generate<br>
-- An integer value from 1 to 3, inclusive
-
-`outFreq` The frequency of the output lines
-- Common Values are 50 and 60, and produce reasonable output.  Other values may not work as expected
-
-`pwmFreq` The frequency of the PWM signals
-- Integer value ranges from hundreds of hertz to over 100kHz.  The maximum value is a function of
+- `invArch` Inverter Architecture
+    - `I20_HALF_BRIDGE` Generate PWM signals for a half bridge configuration with 2 MOSFETs per line
+    - `I20_T_TYPE` Generate PWM signals for a T-Type inverter with 4 MOSFETs per line
+- `hws` Half Wave Signal
+    - `I20_HWS_NONE` Don't generate a half-wave signal
+    - `I20_HWS_SINGLE` Generate a single half wave signal
+    - `I20_HWS_PAIR` Generate a pair of opposite half-wave signals, with dead time inserted between transitions
+- `outRmsVoltage` Target RMS voltage of output<br>
+    - This integer number is meaningful only if feedback is used
+- `numLines` The number of output lines, which determines the number of PWM signals to generate<br>
+    - An integer value from 1 to 3, inclusive
+- `outFreq` The frequency of the output lines
+    - Common Values are 50 and 60, and produce reasonable output.  Other values may not work as expected
+- `pwmFreq` The frequency of the PWM signals
+    - Integer value ranges from hundreds of hertz to over 100kHz.  The maximum value is a function of
 your exact processor, clock configuration, etc.
+- `tccCfgNdx1` Primary TCC configuration for the current platform, see `platform.h` for pin assignments
+- `tccCfgNdx2` Secondary TCC configuration
+    - `I20_PS_NONE` No configuration available
+    - `I20_PS_TCC0` Use TCC0 primary configuration
+    - `I20_PS_TCC0_ALT` Use TCC0 alternate configuration
+    - `I20_PS_TCC1` Use TCC1 primary configuration
+    - `I20_PS_TCC1_ALT` Use TCC1 alternate configuration
+- `deadTimeNs` Dead time to insert into PWM signal transitions, in nanoseconds
+    - Integer value from 0 (no dead time) to a maximum of `255 * ns_per_TCC_clock_tick`
+- `feedback` ADC configuration and schedule
+    - Pointer to `I20Feedback` structure, may be NULL
 
-`tccCfgNdx1` Primary TCC configuration for the current platform, see platform.h<br>
-`tccCfgNdx2` Secondary TCC configuration
-- `I20_PS_NONE` No configuration available
-- `I20_PS_TCC0` Use TCC0 primary configuration
-- `I20_PS_TCC0_ALT` Use TCC1 alternate configuration
-- `I20_PS_TCC1` Use TCC1 primary configuration
-- `I20_PS_TCC1_ALT` Use TCC1 alternate configuration
+### Feedback
 
-`deadTimeNs` Dead time to insert into PWM signal transitions, in nanoseconds
-- Integer value from 0 (no dead time) to a maximum of `255 * ns_per_TCC_clock_tick`
+This section describes the generic configuration of the ADCs, and how ADC readings are scheduled.
+Like for TCCs described above, pin assignments are specified by definitions in an include file
+referenced by `platform.h`.
+```C++
+typedef struct {
+  uint8_t            adcNumBits;                // ADC number of bits: 12, 10, or 8
+  uint16_t           adcPrescaleVal;            // ADC clock prescale value
+  uint16_t           adcSampleTicks;            // ADC clock ticks to hold sample
+  eAnalogReference   adcVRefNdx;                // ADC reference
+  I20FeedbackSignal* signal[maxNumFbSignals];   // voltage and current feedback
+} I20Feedback;
+```
 
-`feedback` ADC configuration and schedule
-- Pointer to `I20Feedback` structure, may be NULL
+- `adcNumBits` The number of bits in an ADC result.  Larger values are more precise, smaller values take less time
+    - Valid values are 8, 10, and 12.
+- `adcPrescaleVal` The source clock ticks are divided by this value to get the ADC clock stream
+    - Valid values are 2, 4, 8, 16, 32, 64, 128, 256
+- `adcSampleTicks` Sample hold time measured in ADC clock ticks
+    - Valid values are from 1 to 64, inclusive
+- `adcVRefNdx` Value to specify the ADC voltage reference against which input signals are measured
+    - `AR_DEFAULT` Default is the 3.3V supply
+    - `AR_INTERNAL1V0` Internal 1.0V reference
+    - `AR_INTERNAL1V1` Internal 1.1V reference
+    - `AR_INTERNAL1V2` Internal 1.2V reference
+    - `AR_INTERNAL1V25` Internal 1.25V reference
+    - `AR_INTERNAL2V0` Internal 2.0V reference
+    - `AR_INTERNAL2V2` Internal 2.2V reference
+    - `AR_INTERNAL2V23` Internal 2.23V reference
+    - `AR_INTERNAL2V4` Internal 2.4V reference
+    - `AR_INTERNAL2V5` Internal 2.5V reference
+    - `AR_INTERNAL1V65` Internal 1.65V reference
+    - `AR_EXTERNAL` Reference voltage from an ADC input pin
+- `signal` An array of feedback signals
+    - See the next section for details
+
+### Feedback Signals
+
+This structure describes an individual ADC reading, and its position in the schedule.
+```C++
+typedef struct {
+  uint16_t           adcPinPos;                 // Index into inverterAdcCfg for positive; platform-specific
+  uint16_t           adcPinNeg;                 // Index for negative (!= ground for diff ADC readings)
+  uint16_t           pos;                       // position in the ADC schedule: 0..n
+  bool               doPwmHandler;              // update PWM duty cycle after this reading is done
+  I20FeedbackType    fbType;                    // type of feedback, this signal also provides lineNum
+  uint32_t           vrTop;                     // voltage: divider top resistance
+  uint32_t           vrBottom;                  // voltage: divider bottom resistance
+  float              aLsb;                      // current: amps per LSB
+} I20FeedbackSignal;
+```
+
+- `adcPinPos` The pin to use for the positive value, see platform.h
+- `adcPinNeg` The pin to use for the negative value, differential reading if not GND
+    - May be GND or a defined name like I20_PIN_Ax_ADCy that is defined in platform.h; note it also defines which ADC is used
+- `pos` Position of this reading in the ADC schedule
+    - 0-relative position in the schedule, duplicate positions are read in round-robin order in subsequent runs
+- `doPwmHandler` Exactly one reading in a schedule should have this flag set
+    - Valid values are `true` and `false`
+- `fbType` Specifies type of reading and the line to which it applies
+    - `I20_FB_UNDEFINED` None of the values below
+    - `I20_LINE1_CURRENT` Current of line 1
+    - `I20_LINE1_VOLTAGE` Voltage of line 1
+    - `I20_LINE2_CURRENT` Current of line 2
+    - `I20_LINE2_VOLTAGE` Voltage of line 2
+    - `I20_LINE3_CURRENT` Current of line 3
+    - `I20_LINE3_VOLTAGE` Voltage of line 3
+    - `I20_BATTTOP_VOLTAGE` Voltage of the battery top
+    - `I20_BATTMID_VOLTAGE` Voltage of the battery midpoint
+- `vrTop` Gives the top resistance value in a resistor divider, used to convert raw ADC value to real-world voltage
+- `vrBottom` Gives the bottom resistance value in a resistor divider
+    - Any valid 32-bit unsigned integer value greater than 0, may be 0 for non-voltage readings
+- `aLsb` Amps per least significant bit, multiply raw ADC value by this to get a real-world current in amps
+    - Any valid floating point number, may be 0 for non-current readings
 
 # Deep Dive
-Coming soon.
+Coming soon to a README near you.
