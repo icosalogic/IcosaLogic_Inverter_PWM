@@ -2,7 +2,7 @@
 This is an Arduino library containing logic for generating PWM signals for an inverter and using
 feedback signals such as voltage and current readings to accurately control those PWM sigals.
 
-The user describes inverter configuration in an input parameters structure, and the library
+The user describes the inverter configuration in an input parameters structure, and the library
 manages operation of the inverter with no further interaction from the application.
 The input parameters tell the library how the PWM signals should be generated,
 and how feedback signals like voltage and current readings should be performed.
@@ -32,7 +32,7 @@ This implementation is incomplete.
 - ADC scheduling is mostly complete, with the exception of an ongoing investigation into a timing issue handling interrupts for parallel readings
 - The framework for control is complete, but the last part to glue everything together is missing
 - The entire library could use a ground-up refactoring
-- The documentation is incomplete (no big surprise)
+- The documentation is incomplete
 
 # Platforms and Example Applications
 Because this library is so intimately tied with the hardware details of both the SAMD51 processor
@@ -174,7 +174,7 @@ Each of these parameters is described below.
 - `invArch` Inverter Architecture
     - `I20_HALF_BRIDGE` Generate PWM signals for a half bridge configuration with 2 MOSFETs per line
     - `I20_T_TYPE` Generate PWM signals for a T-Type inverter with 4 MOSFETs per line
-- `hws` Half Wave Signal
+- `hws` Half Wave Signal is an optional output signal that is high for half of the output sine wave
     - `I20_HWS_NONE` Don't generate a half-wave signal
     - `I20_HWS_SINGLE` Generate a single half wave signal
     - `I20_HWS_PAIR` Generate a pair of opposite half-wave signals, with dead time inserted between transitions
@@ -185,8 +185,8 @@ Each of these parameters is described below.
 - `outFreq` The frequency of the output lines
     - Common Values are 50 and 60, and produce reasonable output.  Other values may not work as expected
 - `pwmFreq` The frequency of the PWM signals
-    - Integer value ranges from hundreds of hertz to over 100kHz.  The maximum value is a function of
-your exact processor, clock configuration, etc.
+    - Integer value ranges from hundreds of hertz to over 100kHz.  The maximum value is a hardware-specific
+function of your exact processor, clock configuration, etc.
 - `tccCfgNdx1` Primary TCC configuration for the current platform, see `platform.h` for pin assignments
 - `tccCfgNdx2` Secondary TCC configuration
     - `I20_PS_NONE` No configuration available
@@ -197,7 +197,7 @@ your exact processor, clock configuration, etc.
 - `deadTimeNs` Dead time to insert into PWM signal transitions, in nanoseconds
     - Integer value from 0 (no dead time) to a maximum of `255 * ns_per_TCC_clock_tick`
 - `feedback` ADC configuration and schedule
-    - Pointer to `I20Feedback` structure, may be NULL
+    - Pointer to `I20Feedback` structure, may be NULL, see next section for details
 
 ### Feedback
 
@@ -233,7 +233,7 @@ typedef struct {
     - `AR_INTERNAL2V5` Internal 2.5V reference
     - `AR_INTERNAL1V65` Internal 1.65V reference
     - `AR_EXTERNAL` Reference voltage from an ADC input pin
-- `signal` An array of feedback signals
+- `signal` A pointer to an array of feedback signals defining the ADC reading schedule
     - See the next section for details
 
 ### Feedback Signals
@@ -257,7 +257,8 @@ typedef struct {
     - May be GND or a defined name like I20_PIN_Ax_ADCy that is defined in platform.h; note it also defines which ADC is used
 - `pos` Position of this reading in the ADC schedule
     - 0-relative position in the schedule, duplicate positions are read in round-robin order in subsequent runs
-- `doPwmHandler` Exactly one reading in a schedule should have this flag set
+- `doPwmHandler` The PWM state is updated after completion of the reading with this flag set to true; exactly one
+reading in a schedule should have this flag set to true, it does not have to be set on the last reading in a schedule
     - Valid values are `true` and `false`
 - `fbType` Specifies type of reading and the line to which it applies
     - `I20_FB_UNDEFINED` None of the values below
@@ -274,6 +275,42 @@ typedef struct {
     - Any valid 32-bit unsigned integer value greater than 0, may be 0 for non-voltage readings
 - `aLsb` Amps per least significant bit, multiply raw ADC value by this to get a real-world current in amps
     - Any valid floating point number, may be 0 for non-current readings
+
+## Interrupt Handlers
+
+Interrupt handlers for the TCC and ADC peripherals are declared in the calling application.
+While this may be viewed as an intrusion of minutia into the world of beginning users, it
+does offer significant advantages to advanced users.
+
+One does not need to define interrupt handlers for interrupts that will never be generated in a given application.
+Specifically, applications that do not use feedback do not need to declare the ADC interrupt handlers.
+On the other hand, there is no penalty for declaring an interrupt handler that will not be used,
+and the application will not behave as intended if you do not declare an interrupt handler that is required.
+
+The interrupt handlers given in the section below are adequate for most applications.
+Additional features are available for advanced users; see the unit_test example or the Deep Dive section below.
+
+```C
+// Handler for TCC0 OVF interrupts.
+void TCC0_0_Handler() {
+  inverter.tccxHandler(0);
+};
+
+// Handler for TCC1 OVF interrupts.
+void TCC1_0_Handler() {
+  inverter.tccxHandler(1);
+};
+
+// Handler for ADC0 RESRDY interrupt.
+void ADC0_1_Handler() {
+  inverter.adc0Handler();
+}
+
+// Handler for ADC1 RESRDY interrupt.
+void ADC1_1_Handler() {
+  inverter.adc1Handler();
+}
+```
 
 # Deep Dive
 Coming soon to a README near you.
