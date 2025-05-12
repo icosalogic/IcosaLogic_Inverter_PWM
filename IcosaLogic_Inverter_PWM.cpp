@@ -229,9 +229,11 @@ void IcosaLogic_Inverter_PWM::setupBasics() {
     return;
   }
   
+  uint16_t startThrottle = inputParams.feedback == NULL ? maxThrottle : defaultStartThrottle;
+  
   iNumLines = (int) inputParams.numLines;
   for (int i = 0; i < iNumLines; i++) {
-    lines[i].throttle = defaultStartThrottle;
+    lines[i].throttle = startThrottle;
   }
   
   setupFreqCfg();
@@ -1999,9 +2001,11 @@ void IcosaLogic_Inverter_PWM::printErrors() {
     }
   }
   
+  /*
   if (nullDetected) {
     for (int i = 0; i < (int) I20_ERR_LAST_ERROR_NUMBER; i++) {
       Serial.printf("    %d: %s\n", i, errText[i]);
     }
   }
+  */
 }
