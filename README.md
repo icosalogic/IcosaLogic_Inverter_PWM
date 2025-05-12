@@ -2,7 +2,7 @@
 This is an Arduino library containing logic for generating PWM signals for an inverter and using
 feedback signals such as voltage and current readings to accurately control those PWM sigals.
 
-The user describes inverter details in an input parameters structure, and the library
+The user describes inverter configuration in an input parameters structure, and the library
 manages operation of the inverter with no further interaction from the application.
 The input parameters tell the library how the PWM signals should be generated,
 and how feedback signals like voltage and current readings should be performed.
@@ -10,7 +10,7 @@ The library does the rest.
 
 This library is targeted specifically for the SAMD51 processor architecture.
 Much of the implementation details will be incomprehensible to users who are not familiar with
-SAMD51 internals.
+the internals of SAMD51 peripherals.
 This library will run on many boards with SAMD51 processors, but smaller boards, or boards
 using chips with a fewer number of pins may have configuration restrictions.
 
@@ -152,49 +152,50 @@ typedef struct {
   uint8_t            numLines;                  // number of output lines
   uint8_t            outFreq;                   // output frequency, either 50 or 60 Hz
   uint32_t           pwmFreq;                   // PWM frequency
-  I20TccCfgNdx       tccCfgNdx1;                // Preferred configuration to use, either TCC0 or 1
-  I20TccCfgNdx       tccCfgNdx2;                // Second configuration to use, either TCC1 or 0
+  I20TccCfgNdx       tccCfgNdx1;                // Preferred config to use, either TCC0 or 1
+  I20TccCfgNdx       tccCfgNdx2;                // Second config to use, either TCC1 or 0
   uint16_t           deadTimeNs;                // dead time between MOSFET transitions
   I20Feedback*       feedback;                  // voltage and current feedback
 } I20InputParams;
 ```
 
 Each of these parameters is described below.
+
 `invArch` Inverter Architecture
-:`I20_HALF_BRIDGE` Generate PWM signals for a half bridge configuration with 2 MOSFETs per line 
-:`I20_T_TYPE` Generate PWM signals for a T-Type inverter with 4 MOSFETs per line
+- `I20_HALF_BRIDGE` Generate PWM signals for a half bridge configuration with 2 MOSFETs per line
+- `I20_T_TYPE` Generate PWM signals for a T-Type inverter with 4 MOSFETs per line
 
 `hws` Half Wave Signal
-:`I20_HWS_NONE` Don't generate a half-wave signal
-:`I20_HWS_SINGLE` Generate a single half wave signal
-:`I20_HWS_PAIR` Generate a pair of opposite half-wave signals, with dead time inserted between transitions
+- `I20_HWS_NONE` Don't generate a half-wave signal
+- `I20_HWS_SINGLE` Generate a single half wave signal
+- `I20_HWS_PAIR` Generate a pair of opposite half-wave signals, with dead time inserted between transitions
 
-`outRmsVoltage` Target RMS voltage of output
-:This integer number is meaningful only if feedback is used
+`outRmsVoltage` Target RMS voltage of output<br>
+- This integer number is meaningful only if feedback is used
 
-`numLines` The number of output lines, which determines the number of PWM signals to generate
-:An integer value from 1 to 3, inclusive
+`numLines` The number of output lines, which determines the number of PWM signals to generate<br>
+- An integer value from 1 to 3, inclusive
 
 `outFreq` The frequency of the output lines
-:Common Values are 50 and 60, and produce reasonable output.  Other values may not work as expected
+- Common Values are 50 and 60, and produce reasonable output.  Other values may not work as expected
 
 `pwmFreq` The frequency of the PWM signals
-:Integer value ranges from hundreds of hertz to over 100kHz.  The maximum value is a function of
-your exact processor, clock configurations, etc.
+- Integer value ranges from hundreds of hertz to over 100kHz.  The maximum value is a function of
+your exact processor, clock configuration, etc.
 
-`tccCfgNdx1` Primary TCC configuration for the current platform, see platform.h
+`tccCfgNdx1` Primary TCC configuration for the current platform, see platform.h<br>
 `tccCfgNdx2` Secondary TCC configuration
-:`I20_PS_NONE` No configuration available
-:`I20_PS_TCC0` Use TCC0 primary configuration
-:`I20_PS_TCC0_ALT` Use TCC1 alternate configuration
-:`I20_PS_TCC1` Use TCC1 primary configuration
-:`I20_PS_TCC1_ALT` Use TCC1 alternate configuration
+- `I20_PS_NONE` No configuration available
+- `I20_PS_TCC0` Use TCC0 primary configuration
+- `I20_PS_TCC0_ALT` Use TCC1 alternate configuration
+- `I20_PS_TCC1` Use TCC1 primary configuration
+- `I20_PS_TCC1_ALT` Use TCC1 alternate configuration
 
 `deadTimeNs` Dead time to insert into PWM signal transitions, in nanoseconds
-:Integer value from 0 (no dead time) to a maximum of `255 * ns_per_TCC_clock_tick`
+- Integer value from 0 (no dead time) to a maximum of `255 * ns_per_TCC_clock_tick`
 
 `feedback` ADC configuration and schedule
-:Pointer to `I20Feedback` structure, may be NULL
+- Pointer to `I20Feedback` structure, may be NULL
 
 # Deep Dive
 Coming soon.
