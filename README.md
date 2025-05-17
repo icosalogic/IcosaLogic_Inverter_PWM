@@ -14,6 +14,12 @@ the internals of SAMD51 peripherals.
 This library will run on many boards with SAMD51 processors, but smaller boards, or boards
 using chips with a fewer number of pins may have configuration restrictions.
 
+This library assumes it has total control over the TCCs and ADCs on the processor.
+That means, for example, if you configure the inverter for feedback, start it, then do an
+`analog_read()`, Arduino will reprogram one of the ADCs in a way that will probably break the inverter.
+It is best to configure this library's feedback mechanism to do all your analog reads.
+Calling `analog_write()` is also potentially a conflict.
+
 # Features
 - 50 or 60 Hz output frequency
 - Configurable PWM frequency
@@ -169,7 +175,7 @@ typedef struct {
 } I20InputParams;
 ```
 
-Each of these parameters is described below.
+Each parameter is described below.
 
 - `invArch` Inverter Architecture
     - `I20_HALF_BRIDGE` Generate PWM signals for a half bridge configuration with 2 MOSFETs per line
@@ -185,8 +191,8 @@ Each of these parameters is described below.
 - `outFreq` The frequency of the output lines
     - Common Values are 50 and 60, and produce reasonable output.  Other values may not work as expected
 - `pwmFreq` The frequency of the PWM signals
-    - Integer value ranges from hundreds of hertz to over 100kHz.  The maximum value is a hardware-specific
-function of your exact processor, clock configuration, etc.
+    - Integer value ranges from hundreds of hertz to 180kHz.  The effective maximum value is a
+hardware-specific function of your exact processor, clock configuration, etc.
 - `tccCfgNdx1` Primary TCC configuration for the current platform, see `platform.h` for pin assignments
 - `tccCfgNdx2` Secondary TCC configuration
     - `I20_PS_NONE` No configuration available
@@ -210,13 +216,14 @@ typedef struct {
   uint16_t           adcPrescaleVal;            // ADC clock prescale value
   uint16_t           adcSampleTicks;            // ADC clock ticks to hold sample
   eAnalogReference   adcVRefNdx;                // ADC reference
+  float              extVRefValue;              // voltage of external VRef, if selected
   I20FeedbackSignal* signal[maxNumFbSignals];   // voltage and current feedback
 } I20Feedback;
 ```
 
 - `adcNumBits` The number of bits in an ADC result.  Larger values are more precise, smaller values take less time
     - Valid values are 8, 10, and 12.
-- `adcPrescaleVal` The source clock ticks are divided by this value to get the ADC clock stream
+- `adcPrescaleVal` The 48 MHz source clock is divided by this value to get the ADC clock
     - Valid values are 2, 4, 8, 16, 32, 64, 128, 256
 - `adcSampleTicks` Sample hold time measured in ADC clock ticks
     - Valid values are from 1 to 64, inclusive
@@ -232,7 +239,9 @@ typedef struct {
     - `AR_INTERNAL2V4` Internal 2.4V reference
     - `AR_INTERNAL2V5` Internal 2.5V reference
     - `AR_INTERNAL1V65` Internal 1.65V reference
-    - `AR_EXTERNAL` Reference voltage from an ADC input pin
+    - `AR_EXTERNAL` Reference voltage from the AREF input pin.  Using this means the DAC does not work properly
+- `extVRefValue` Voltage of the external voltage reference
+    - Floating point value of the reference voltage, used only when adcVRefNdx is AR_EXTERNAL
 - `signal` A pointer to an array of feedback signals defining the ADC reading schedule
     - See the next section for details
 
@@ -311,6 +320,125 @@ void ADC1_1_Handler() {
   inverter.adc1Handler();
 }
 ```
+
+## Pin Assignments
+
+Pin assignments are constrained by circuit layout internal to the die inside the processor chip,
+and how the pads on the die are connected to the pins or balls on the chip package.
+Further constraints may be imposed by how the chip package leads are connected to the circuit board.
+This results in each board having a specific pin layout suitable for this inverter library.
+
+The primary constraint on pin assignments for PWM generation are the result of TCC IOSET configurations.
+A given TCC may support multiple IOSETs, but can only use one IOSET at a time.
+A TCC supports pairs of pins; half-bridge configurations use 1 pair of pins per line, while T-type
+configurations require 2 pairs per line.
+
+A secondary constraint on pin assignments is how the Arduino analog input pins are declared for a given board.
+One common issue is that some boards declare most of the analog input pins to be on ADC0, with very few on ADC1.
+
+### Adafruit ItsyBitsy M4 Express
+
+The only usable TCC IOSET for PWM on this board is TCC1 IOSET1.
+
+| Pin | Pad  | Pair |
+| === | ==== | ==== |
+|  0  | PA16 |   1  |
+|  1  | PA17 |   2  |
+|  7  | PA18 |   3  |
+|  9  | PA19 |   4  |
+| 10  | PA20 |   1  |
+| 11  | PA21 |   2  |
+| 13  | PA22 |   3  |
+| 12  | PA23 |   4  |
+
+Here are the available analog input pins.
+
+| APin | Pin | Pad  | ADC0 | ADC1 |
+| ==== | === | ==== | ==== | ==== |
+|  A0  |  14 | PA02 | Yes  |  No  |
+|  A1  |  15 | PA05 | Yes  |  No  |
+|  A2  |  16 | PB08 | Yes  |  Yes |
+|  A3  |  17 | PB09 | Yes  |  Yes |
+|  A4  |  18 | PA04 | Yes  |  No  |
+|  A5  |  19 | PA06 | Yes  |  No  |
+
+### Adafruit Feather M4 Express
+
+The only usable TCC IOSET for PWM on this board is TCC1 IOSET1.
+
+| Pin | Pad  | Pair |
+| === | ==== | ==== |
+|  5  | PA16 |   1  |
+| 25  | PA17 |   2  |
+|  6  | PA18 |   3  |
+|  9  | PA19 |   4  |
+| 10  | PA20 |   1  |
+| 11  | PA21 |   2  |
+| 12  | PA22 |   3  |
+| 13  | PA23 |   4  |
+
+Here are the available analog input pins.
+
+| APin | Pin | Pad  | ADC0 | ADC1 |
+| ==== | === | ==== | ==== | ==== |
+|  A0  |  14 | PA02 | Yes  |  No  |
+|  A1  |  15 | PA05 | Yes  |  No  |
+|  A2  |  16 | PB08 | Yes  |  Yes |
+|  A3  |  17 | PB09 | Yes  |  Yes |
+|  A4  |  18 | PA04 | Yes  |  No  |
+|  A5  |  19 | PA06 | Yes  |  No  |
+
+### Adafruit Grand Central M4 Express
+
+This is an exceptionally capable board, with a large number of available pins.
+It is suitable for a maximum configuration inverter.
+
+The primary TCC configuration on this board is TCC1 IOSET1.
+
+| Pin | Pad  | Pair |
+| === | ==== | ==== |
+| 37  | PA16 |   1  |
+| 36  | PA17 |   2  |
+| 35  | PA18 |   3  |
+| 34  | PA19 |   4  |
+| 33  | PA20 |   1  |
+| 32  | PA21 |   2  |
+| 31  | PA22 |   3  |
+| 30  | PA23 |   4  |
+
+A usable secondary is TCC0 IOSET2.
+
+| Pin | Pad  | Pair |
+| === | ==== | ==== |
+| 48  | PC04 |   1  |
+| 51  | PD08 |   2  |
+| 52  | PD09 |   3  |
+| 53  | PD10 |   4  |
+| 50  | PD11 |   1  |
+| 22  | PD12 |   2  |
+| 16  | PC22 |   3  |
+| 17  | PC23 |   4  |
+
+Here are the available analog input pins.
+
+| APin | Pin | Pad  | ADC0 | ADC1 |
+| ==== | === | ==== | ==== | ==== |
+|  A0  |  67 | PA02 | Yes  |  No  |
+|  A1  |  68 | PA05 | Yes  |  No  |
+|  A2  |  69 | PB03 | Yes  |  No  |
+|  A3  |  70 | PC00 | No   | Yes  |
+|  A4  |  71 | PC01 | No   | Yes  |
+|  A5  |  72 | PC02 | No   | Yes  |
+|  A6  |  73 | PC03 | No   | Yes  |
+|  A7  |  74 | PB04 | No   | Yes  |
+|  A8  |  54 | PB05 | No   | Yes  |
+|  A9  |  55 | PB06 | No   | Yes  |
+|  A10 |  56 | PB07 | No   | Yes  |
+|  A11 |  57 | PB08 | Yes  | Yes  |
+|  A12 |  58 | PB09 | Yes  | Yes  |
+|  A13 |  59 | PA04 | Yes  |  No  |
+|  A14 |  60 | PA06 | Yes  |  No  |
+|  A15 |  61 | PA07 | Yes  |  No  |
 
 # Deep Dive
 Coming soon to a README near you.
