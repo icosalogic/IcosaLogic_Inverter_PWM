@@ -82,6 +82,8 @@ typedef enum {
   I20_ERR_ADC_DO_PWM_NOT_SET,
   I20_ERR_ADC_SCHEDULE_TIME_LONGER_THAN_PWM_TIME,
   I20_ERR_REQUESTED_RESOURCES_EXCEEDS_AVAILABLE,
+  I20_ERR_INCONSISTENT_RESISTOR_DIVIDERS,
+  I20_ERR_PEAK_DIVIDED_VOLTAGE_EXCEEDS_ADC_VREF,
   I20_ERR_LAST_ERROR_NUMBER,                            // keep this entry last
 } I20_ERROR_NUMBER;
 
@@ -90,10 +92,11 @@ typedef enum {
  */
  
 const int maxNumLines = 3;
-const uint32_t maxPwmFrequency = 300060;            // 300k
-const uint16_t maxNumSamples = 3600;                // 6000 for 300k pwmFreq
+const uint32_t maxPwmFrequency = 180060;            // 180k
+const uint16_t maxNumSamples = 3600;                // 3600 for 180k pwmFreq
 const uint16_t maxDeadtimeTicks = 255;
 const int maxNumFbSignals = 16;
+const float defaultAdcVRef = 3.3;
 
 /**! Specify the architecture of the inverter for which we are generating signals.
  *   Half-bridge designs use 2 MOSFETs per output line.
@@ -149,7 +152,8 @@ typedef struct {
   uint8_t            adcNumBits;                // ADC number of bits: 12, 10, or 8
   uint16_t           adcPrescaleVal;            // ADC clock prescale value
   uint16_t           adcSampleTicks;            // ADC clock ticks to hold sample
-  eAnalogReference   adcVRefNdx;                // ADC reference
+  eAnalogReference   adcVRefNdx;                // ADC reference to use
+  float              extVRefValue;              // voltage of external VRef, if selected
   I20FeedbackSignal* signal[maxNumFbSignals];   // voltage and current feedback
 } I20Feedback;
 
@@ -182,14 +186,14 @@ typedef struct {
   uint16_t           throttle;                  // applied to reference value to get target volts
   uint16_t           load;                      // applied to reference value to get target load 
   // should these be int16_t???
-  uint16_t           adcVolts0;                 // prediction period n+1
-  uint16_t           adcVolts1;                 // reading    period n
-  uint16_t           adcVolts1p;                // prediction period n
-  uint16_t           adcVolts2;                 // reading    period n-1
-  uint16_t           adcAmps0;                  // prediction period n+1
-  uint16_t           adcAmps1;                  // reading    period n
-  uint16_t           adcAmps1p;                 // prediction period n
-  uint16_t           adcAmps2;                  // reading    period n-1
+  int16_t            adcVolts0;                 // prediction period n+1
+  int16_t            adcVolts1;                 // reading    period n
+  int16_t            adcVolts1p;                // prediction period n
+  int16_t            adcVolts2;                 // reading    period n-1
+  int16_t            adcAmps0;                  // prediction period n+1
+  int16_t            adcAmps1;                  // reading    period n
+  int16_t            adcAmps1p;                 // prediction period n
+  int16_t            adcAmps2;                  // reading    period n-1
 } PerLineData;
   
 /**************************************************************************/
@@ -243,14 +247,17 @@ protected:
   uint16_t          numSamplesDiv2;
   int32_t           pwmSineData1[maxNumSamples];
   int32_t           perMidPoint;
-// int16_t           adcSineData[maxNumSamples];         // adjusted by resistor divider
+  int16_t           adcSineData[maxNumSamples];          // adjusted by resistor divider
+  bool              vfbSet;
+  double            resistorDivider;
+  double            adcThrottleRatio;
 
-  uint16_t          vBattTopRaw;
-  uint16_t          vBattMidRaw;
+  int16_t           vBattTopRaw;
+  int16_t           vBattMidRaw;
 
   uint8_t           iNumLines;
   
-  const int32_t     defaultMaxThrottle = 1000;           // determines granularity of adjustments
+  const int32_t     defaultMaxThrottle = 1024;           // determines granularity of adjustments
   const int32_t     defaultStartThrottle = 560;          // actual output adjustment value
   int32_t           maxThrottle;
   const int16_t     defaultMaxLoad = 1000;
@@ -358,8 +365,6 @@ protected:
   // ADC Fields ####################################################################################
   
   // Data for configuring the size of the ADC readings.
-  double adcVRef = 3.3;                          // default ADC reference voltage
-  
   typedef struct {
     uint8_t  numBits;
     uint8_t  cfgValue;
@@ -381,9 +386,11 @@ protected:
     float            refVoltage;
   } AdcRefEntry;
   
+  double adcVRef = defaultAdcVRef;
+  
   static const int numAdcReferenceEntries = 12;
   AdcRefEntry adcReference[numAdcReferenceEntries] = {
-    {AR_DEFAULT,      3.30},
+    {AR_DEFAULT,      defaultAdcVRef},
     {AR_INTERNAL1V0,  1.00},
     {AR_INTERNAL1V1,  1.10},
     {AR_INTERNAL1V2,  1.20},
@@ -394,7 +401,7 @@ protected:
     {AR_INTERNAL2V4,  2.40},
     {AR_INTERNAL2V5,  2.50},
     {AR_INTERNAL1V65, 1.65},
-    {AR_EXTERNAL,     3.30},          // add another input param for actual value?
+    {AR_EXTERNAL,     defaultAdcVRef},
   };
   
   const IRQn_Type adcIrqs[ADC_INST_NUM] = {ADC0_1_IRQn, ADC1_1_IRQn};
@@ -415,7 +422,7 @@ protected:
     I20FeedbackSignal*        fbs;
     I20PinData*               ipd;
     Adc*                      adc;
-    uint16_t*                 pResult;
+    int16_t*                  pResult;
     bool                      doPwmHandler;  // in fbs
     uint16_t                  inputCtrl;
     uint32_t                  tsStart;
@@ -455,7 +462,6 @@ protected:
   
   const uint32_t Freq_48MHz = 48 * 1000u * 1000u;         // GCLK frequency used by ADC
   const uint8_t Idx_48MHz = 1;                            // GCLK Generator num for ADC
-  const uint32_t AdcFreq = Freq_48MHz / AdcClockPrescale; // Effective ADC clock frequency
   uint32_t adcConversionNs = 0;                           // time to do 1 ADC reading, in ns
   
   static const int maxNumAdcPins = 128;
@@ -484,6 +490,7 @@ protected:
   void setupPin(InverterTimerCfg* itc, int lineNum, char prefix, int pinNum);
   void setupOutputPin(InverterTimerCfg* itc, int pinNum, int lineNum, char prefix, int qNum);
   void setupSineWaveIndices();
+  void checkNumSamples();
   void genSineWaveData();
   void setupFreqCfg();
   
@@ -499,6 +506,7 @@ protected:
   void setupAdcInitCfg();
   void setupAdcSchedule();
   void setupAdcScheduleEntry(I20FeedbackSignal* fbs);
+  void setupAdcVfb(I20FeedbackSignal* fbs);
   void setupAdcInputCtrl(AdcScheduleEntry* entry);
   void setupAdcEnable();
   void getNextEntry(AdcSchedule* sched);
@@ -553,6 +561,8 @@ protected:
     "doPwmUpdate is not set in any ADC schedule",
     "ADC schedule time longer than PWM cycle time",
     "Requested resources exceeds available resources",
+    "Resistor dividers must be consistent for all lines",
+    "Peak voltage through resistor divider exceeds ADC voltage reference",
   };
 
   static const int maxNumErrors = 100;

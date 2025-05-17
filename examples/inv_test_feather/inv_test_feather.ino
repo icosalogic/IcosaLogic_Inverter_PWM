@@ -42,27 +42,27 @@ const eAnalogReference  adcVRefNdx     = AR_DEFAULT;
 // ADC0 and ADC1 in parallel for 1 reading each from A4, A2
 I20FeedbackSignal fbs0101   = {I20_PIN_A4_ADC0, I20_PIN_GND,  0, false, I20_LINE1_VOLTAGE, 820000,  7400, 0.0};
 I20FeedbackSignal fbs0102   = {I20_PIN_A2_ADC1, I20_PIN_GND,  0, true,  I20_LINE1_CURRENT,      0,     0, 0.025177};
-I20Feedback fb_2adc_1e      = {adcNumBits, adcPrescale, adcSampleTicks, adcVRefNdx,
+I20Feedback fb_2adc_1e      = {adcNumBits, adcPrescale, adcSampleTicks, adcVRefNdx, defaultAdcVRef,
                                {&fbs0101, &fbs0102, NULL}};
 
 // ADC0  1 reading A2
 I20FeedbackSignal fbs0201   = {I20_PIN_A2_ADC0, I20_PIN_GND,  1, true,  I20_LINE1_VOLTAGE, 820000,  7400, 0.0};
-I20Feedback fb_1adc0_1e_2   = {adcNumBits, adcPrescale, adcSampleTicks, adcVRefNdx,
+I20Feedback fb_1adc0_1e_2   = {adcNumBits, adcPrescale, adcSampleTicks, adcVRefNdx, defaultAdcVRef,
                                {&fbs0201, NULL}};
 
 // ADC1  1 reading A2
 I20FeedbackSignal fbs0301   = {I20_PIN_A2_ADC1, I20_PIN_GND,  1, true,  I20_LINE1_VOLTAGE, 820000,  7400, 0.0};
-I20Feedback fb_1adc1_1e_2   = {adcNumBits, adcPrescale, adcSampleTicks, adcVRefNdx,
+I20Feedback fb_1adc1_1e_2   = {adcNumBits, adcPrescale, adcSampleTicks, adcVRefNdx, defaultAdcVRef,
                                {&fbs0301, NULL}};
 
 // ADC0  1 reading A3
 I20FeedbackSignal fbs0401   = {I20_PIN_A3_ADC0, I20_PIN_GND,  1, true,  I20_LINE1_VOLTAGE, 820000,  7400, 0.0};
-I20Feedback fb_1adc0_1e_3   = {adcNumBits, adcPrescale, adcSampleTicks, adcVRefNdx,
+I20Feedback fb_1adc0_1e_3   = {adcNumBits, adcPrescale, adcSampleTicks, adcVRefNdx, defaultAdcVRef,
                                {&fbs0401, NULL}};
 
 // ADC1  1 reading A3
 I20FeedbackSignal fbs0501   = {I20_PIN_A3_ADC1, I20_PIN_GND,  1, true,  I20_LINE1_VOLTAGE, 820000,  7400, 0.0};
-I20Feedback fb_1adc1_1e_3   = {adcNumBits, adcPrescale, adcSampleTicks, adcVRefNdx,
+I20Feedback fb_1adc1_1e_3   = {adcNumBits, adcPrescale, adcSampleTicks, adcVRefNdx, defaultAdcVRef,
                                {&fbs0501, NULL}};
 
 // max config for this platform
@@ -72,19 +72,19 @@ I20FeedbackSignal fbs0603   = {I20_PIN_A5_ADC0, I20_PIN_GND,  1, false, I20_LINE
 I20FeedbackSignal fbs0604   = {I20_PIN_A3_ADC1, I20_PIN_GND,  1, true,  I20_LINE2_CURRENT,        0,     0, 0.025177};
 I20FeedbackSignal fbs0605   = {I20_PIN_A0_ADC0, I20_PIN_GND,  2, false, I20_BATTTOP_VOLTAGE, 820000,  4460, 0.0};
 I20FeedbackSignal fbs0606   = {I20_PIN_A1_ADC0, I20_PIN_GND,  2, false, I20_BATTMID_VOLTAGE, 820000,  4460, 0.0};
-I20Feedback fb_max          = {adcNumBits, adcPrescale, adcSampleTicks, adcVRefNdx,
+I20Feedback fb_max          = {adcNumBits, adcPrescale, adcSampleTicks, adcVRefNdx, defaultAdcVRef,
                                {&fbs0601, &fbs0602, &fbs0603, &fbs0604, &fbs0605, &fbs0606 }};
 
 // ADC0  2 sequential readings A2, A3
 I20FeedbackSignal fbs0701   = {I20_PIN_A2_ADC0, I20_PIN_GND,  0, false, I20_LINE1_VOLTAGE, 820000,  7400, 0.0};
 I20FeedbackSignal fbs0702   = {I20_PIN_A3_ADC0, I20_PIN_GND,  1, true,  I20_LINE1_VOLTAGE, 820000,  7400, 0.0};
-I20Feedback fb_1adc0_2e     = {adcNumBits, adcPrescale, adcSampleTicks, adcVRefNdx,
+I20Feedback fb_1adc0_2e     = {adcNumBits, adcPrescale, adcSampleTicks, adcVRefNdx, defaultAdcVRef,
                                {&fbs0701, &fbs0702, NULL}};
 
 // ADC1  2 sequential readings A2, A3
 I20FeedbackSignal fbs0801   = {I20_PIN_A2_ADC1, I20_PIN_GND,  0, false, I20_LINE1_VOLTAGE, 820000,  7400, 0.0};
 I20FeedbackSignal fbs0802   = {I20_PIN_A3_ADC1, I20_PIN_GND,  1, true,  I20_LINE1_VOLTAGE, 820000,  7400, 0.0};
-I20Feedback fb_1adc1_2e     = {adcNumBits, adcPrescale, adcSampleTicks, adcVRefNdx,
+I20Feedback fb_1adc1_2e     = {adcNumBits, adcPrescale, adcSampleTicks, adcVRefNdx, defaultAdcVRef,
                                {&fbs0801, &fbs0802, NULL}};
 
 // ADC0 and ADC1 in parallel 2 sequential readings each
@@ -92,7 +92,7 @@ I20FeedbackSignal fbs0901   = {I20_PIN_A4_ADC0, I20_PIN_GND,  0, false, I20_LINE
 I20FeedbackSignal fbs0902   = {I20_PIN_A2_ADC1, I20_PIN_GND,  0, false, I20_LINE2_VOLTAGE,   820000,  7400, 0.0};
 I20FeedbackSignal fbs0903   = {I20_PIN_A5_ADC0, I20_PIN_GND,  1, false, I20_LINE1_CURRENT,        0,     0, 0.025177};
 I20FeedbackSignal fbs0904   = {I20_PIN_A3_ADC1, I20_PIN_GND,  1, true,  I20_LINE2_CURRENT,        0,     0, 0.025177};
-I20Feedback fb_2adc_2e      = {adcNumBits, adcPrescale, adcSampleTicks, adcVRefNdx,
+I20Feedback fb_2adc_2e      = {adcNumBits, adcPrescale, adcSampleTicks, adcVRefNdx, defaultAdcVRef,
                                {&fbs0901, &fbs0902, &fbs0903, &fbs0904, NULL }};
 
 // ADC0 4 sibling readings position 0
@@ -100,7 +100,7 @@ I20FeedbackSignal fbs1001   = {I20_PIN_A4_ADC0, I20_PIN_GND,  0, true,  I20_LINE
 I20FeedbackSignal fbs1002   = {I20_PIN_A2_ADC0, I20_PIN_GND,  0, true,  I20_LINE2_VOLTAGE,   820000,  7400, 0.0};
 I20FeedbackSignal fbs1003   = {I20_PIN_A5_ADC0, I20_PIN_GND,  0, true,  I20_LINE1_CURRENT,        0,     0, 0.025177};
 I20FeedbackSignal fbs1004   = {I20_PIN_A3_ADC0, I20_PIN_GND,  0, true,  I20_LINE2_CURRENT,        0,     0, 0.025177};
-I20Feedback fb_1adc0_4s0    = {adcNumBits, adcPrescale, adcSampleTicks, adcVRefNdx,
+I20Feedback fb_1adc0_4s0    = {adcNumBits, adcPrescale, adcSampleTicks, adcVRefNdx, defaultAdcVRef,
                                {&fbs1001, &fbs1002, &fbs1003, &fbs1004, NULL }};
 
 // ADC0 4 sibling readings position 1
@@ -109,7 +109,7 @@ I20FeedbackSignal fbs1102   = {I20_PIN_A4_ADC0, I20_PIN_GND,  1, true,  I20_LINE
 I20FeedbackSignal fbs1103   = {I20_PIN_A2_ADC0, I20_PIN_GND,  1, true,  I20_LINE2_VOLTAGE,   820000,  7400, 0.0};
 I20FeedbackSignal fbs1104   = {I20_PIN_A5_ADC0, I20_PIN_GND,  1, true,  I20_LINE1_CURRENT,        0,     0, 0.025177};
 I20FeedbackSignal fbs1105   = {I20_PIN_A3_ADC0, I20_PIN_GND,  1, true,  I20_LINE2_CURRENT,        0,     0, 0.025177};
-I20Feedback fb_1adc0_4s1    = {adcNumBits, adcPrescale, adcSampleTicks, adcVRefNdx,
+I20Feedback fb_1adc0_4s1    = {adcNumBits, adcPrescale, adcSampleTicks, adcVRefNdx, defaultAdcVRef,
                                {&fbs1101, &fbs1102, &fbs1103, &fbs1104, NULL }};
 
 // ADC0 3 sibling readings position 0  3 sibling readings position 1
@@ -119,7 +119,7 @@ I20FeedbackSignal fbs1203   = {I20_PIN_A5_ADC0, I20_PIN_GND,  1, true,  I20_LINE
 I20FeedbackSignal fbs1204   = {I20_PIN_A3_ADC0, I20_PIN_GND,  1, true,  I20_LINE2_CURRENT,        0,     0, 0.025177};
 I20FeedbackSignal fbs1205   = {I20_PIN_A0_ADC0, I20_PIN_GND,  2, false, I20_BATTTOP_VOLTAGE, 820000,  4460, 0.0};
 I20FeedbackSignal fbs1206   = {I20_PIN_A1_ADC0, I20_PIN_GND,  2, false, I20_BATTMID_VOLTAGE, 820000,  4460, 0.0};
-I20Feedback fb_1adc0_2s0_2s1_2s2  = {adcNumBits, adcPrescale, adcSampleTicks, adcVRefNdx,
+I20Feedback fb_1adc0_2s0_2s1_2s2  = {adcNumBits, adcPrescale, adcSampleTicks, adcVRefNdx, defaultAdcVRef,
                                      {&fbs1201, &fbs1202, &fbs1203, &fbs1204, &fbs1205, &fbs1206 }};
 
 I20InputParams defaultParams = {invArch,         // inverter architecture

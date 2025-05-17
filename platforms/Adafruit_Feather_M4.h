@@ -30,11 +30,13 @@
                                             {"PA02", 14, PIO_ANALOG,     0,  0},  // A0 : ADC0
                                             {"PA05", 15, PIO_ANALOG,     0,  5},  // A1 : ADC0
                                             {"PB08", 16, PIO_ANALOG,     0,  2},  // A2 : ADC0
-                                            {"PB08", 40, PIO_ANALOG,     1,  0},  // A2 : ADC1
+                                            {"PB08", 16, PIO_ANALOG,     1,  0},  // A2 : ADC1
                                             {"PB09", 17, PIO_ANALOG,     0,  3},  // A3 : ADC0
-                                            {"PB09", 41, PIO_ANALOG,     1,  1},  // A3 : ADC1
+                                            {"PB09", 17, PIO_ANALOG,     1,  1},  // A3 : ADC1
                                             {"PA04", 18, PIO_ANALOG,     0,  4},  // A4 : ADC0
                                             {"PA06", 19, PIO_ANALOG,     0,  6}}; // A5 : ADC0
+
+  I20PinData adcVRefPin = {"PA03", 31, PIO_ANALOG, 0, 0};  // AREF
 
 // ADC config values for Adafruit Feather M4
 // Must match InverterAdcCfg[] above

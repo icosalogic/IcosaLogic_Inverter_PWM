@@ -58,7 +58,7 @@ I20FeedbackSignal aLine2   = {P_X3, I20_PIN_GND,  1, true,  I20_LINE2_CURRENT,  
 I20FeedbackSignal vBattTop = {P_X0, I20_PIN_GND,  2, false, I20_BATTTOP_VOLTAGE, 820000,  4460, 0.0};
 I20FeedbackSignal vBattMid = {P_X1, I20_PIN_GND,  2, false, I20_BATTMID_VOLTAGE, 820000,  4460, 0.0};
 
-I20Feedback feedback = {adcNumBits, adcPrescale, adcSampleTicks, adcVRefNdx,
+I20Feedback feedback = {adcNumBits, adcPrescale, adcSampleTicks, adcVRefNdx, defaultAdcVRef,
                         {&vLine1, &vLine2, &aLine1, &aLine2, &vBattTop, &vBattMid }};
 
 I20InputParams defaultParams = {invArch,         // inverter architecture
@@ -418,7 +418,7 @@ bool testNumLinesValid() {
 
   I20FeedbackSignal vLine1   = {P_X4, I20_PIN_GND,  0, true,  I20_LINE1_VOLTAGE,  820000,  7400, 0.0};
   I20FeedbackSignal vLine2   = {P_X2, I20_PIN_GND,  0, false, I20_LINE2_VOLTAGE,  820000,  7400, 0.0};
-  I20Feedback feedback = {adcNumBits, adcPrescale, adcSampleTicks, adcVRefNdx,
+  I20Feedback feedback = {adcNumBits, adcPrescale, adcSampleTicks, adcVRefNdx, defaultAdcVRef,
                           {&vLine1, &vLine2, NULL, NULL}};
 
   bool testResult = true;
@@ -481,7 +481,7 @@ bool testAdcNumBitsInvalid() {
   Serial.printf("    START  -- testAdcNumBitsInvalid: testing %d values\n", numTestValues);
 
   I20FeedbackSignal vLine1   = {P_X4, I20_PIN_GND,  0, true, I20_LINE1_VOLTAGE,  820000,  7400, 0.0};
-  I20Feedback feedback = {adcNumBits, adcPrescale, adcSampleTicks, adcVRefNdx,
+  I20Feedback feedback = {adcNumBits, adcPrescale, adcSampleTicks, adcVRefNdx, defaultAdcVRef,
                           {&vLine1, NULL, NULL, NULL, NULL, NULL}};
 
   bool testResult = true;
@@ -505,7 +505,7 @@ bool testAdcNumBitsValid() {
   Serial.printf("    START  -- testAdcNumBitsValid: testing %d values\n", numTestValues);
 
   I20FeedbackSignal vLine1   = {P_X4, I20_PIN_GND,  0, true, I20_LINE1_VOLTAGE,  820000,  7400, 0.0};
-  I20Feedback feedback = {adcNumBits, adcPrescale, adcSampleTicks, adcVRefNdx,
+  I20Feedback feedback = {adcNumBits, adcPrescale, adcSampleTicks, adcVRefNdx, defaultAdcVRef,
                           {&vLine1, NULL, NULL, NULL, NULL, NULL}};
 
   bool testResult = true;
@@ -530,7 +530,7 @@ bool testAdcPrescaleInvalid() {
   Serial.printf("    START  -- testAdcPrescaleInvalid: testing %d values\n", numTestValues);
 
   I20FeedbackSignal vLine1   = {P_X4, I20_PIN_GND,  0, true, I20_LINE1_VOLTAGE,  820000,  7400, 0.0};
-  I20Feedback feedback = {adcNumBits, adcPrescale, adcSampleTicks, adcVRefNdx,
+  I20Feedback feedback = {adcNumBits, adcPrescale, adcSampleTicks, adcVRefNdx, defaultAdcVRef,
                           {&vLine1, NULL, NULL, NULL, NULL, NULL}};
 
   bool testResult = true;
@@ -554,7 +554,7 @@ bool testAdcPrescaleValid() {
   Serial.printf("    START  -- testAdcPrescaleValid: testing %d values\n", numTestValues);
 
   I20FeedbackSignal vLine1   = {P_X4, I20_PIN_GND,  0, true, I20_LINE1_VOLTAGE,  820000,  7400, 0.0};
-  I20Feedback feedback = {adcNumBits, adcPrescale, adcSampleTicks, adcVRefNdx,
+  I20Feedback feedback = {adcNumBits, adcPrescale, adcSampleTicks, adcVRefNdx, defaultAdcVRef,
                           {&vLine1, NULL, NULL, NULL, NULL, NULL}};
 
   bool testResult = true;
@@ -579,7 +579,7 @@ bool testAdcSampleTicksInvalid() {
   Serial.printf("    START  -- testAdcSampleTicksInvalid: testing %d values\n", numTestValues);
 
   I20FeedbackSignal vLine1   = {P_X4, I20_PIN_GND,  0, true, I20_LINE1_VOLTAGE,  820000,  7400, 0.0};
-  I20Feedback feedback = {adcNumBits, adcPrescale, adcSampleTicks, adcVRefNdx,
+  I20Feedback feedback = {adcNumBits, adcPrescale, adcSampleTicks, adcVRefNdx, defaultAdcVRef,
                           {&vLine1, NULL, NULL, NULL, NULL, NULL}};
 
   bool testResult = true;
@@ -604,7 +604,7 @@ bool testAdcSampleTicksValid() {
   Serial.printf("    START  -- testAdcSampleTicksValid: testing %d values\n", numTestValues);
 
   I20FeedbackSignal vLine1   = {P_X4, I20_PIN_GND,  0, true, I20_LINE1_VOLTAGE,  820000,  7400, 0.0};
-  I20Feedback feedback = {adcNumBits, adcPrescale, adcSampleTicks, adcVRefNdx,
+  I20Feedback feedback = {adcNumBits, adcPrescale, adcSampleTicks, adcVRefNdx, defaultAdcVRef,
                           {&vLine1, NULL, NULL, NULL, NULL, NULL}};
 
   bool testResult = true;
@@ -710,7 +710,7 @@ bool testReusedAdcInputPinError() {
 
   I20FeedbackSignal vLine1   = {P_X4, I20_PIN_GND,  0, false, I20_LINE1_VOLTAGE, 820000,  7400, 0.0};
   I20FeedbackSignal vLine2   = {P_X4, I20_PIN_GND,  0, false, I20_LINE2_VOLTAGE, 820000,  7400, 0.0};
-  I20Feedback feedback = {adcNumBits, adcPrescale, adcSampleTicks, adcVRefNdx,
+  I20Feedback feedback = {adcNumBits, adcPrescale, adcSampleTicks, adcVRefNdx, defaultAdcVRef,
                           {&vLine1, &vLine2, NULL, NULL, NULL, NULL }}; 
 
   bool testResult = true;
@@ -855,7 +855,7 @@ bool testAdcSiblingDoPwmConflict() {
 
   I20FeedbackSignal vLine1   = {P_X4, I20_PIN_GND,  0, true,  I20_LINE1_VOLTAGE, 820000,  7400, 0.0};
   I20FeedbackSignal vLine2   = {P_X1, I20_PIN_GND,  0, false, I20_LINE2_VOLTAGE, 820000,  7400, 0.0};
-  I20Feedback feedback = {adcNumBits, adcPrescale, adcSampleTicks, adcVRefNdx,
+  I20Feedback feedback = {adcNumBits, adcPrescale, adcSampleTicks, adcVRefNdx, defaultAdcVRef,
                           {&vLine1, &vLine2, NULL, NULL, NULL, NULL}};
 
   bool testResult = true;
@@ -876,7 +876,7 @@ bool testAdcDoPwmMultiplePositions() {
 
   I20FeedbackSignal vLine1   = {P_X4, I20_PIN_GND,  0, true,  I20_LINE1_VOLTAGE, 820000,  7400, 0.0};
   I20FeedbackSignal vLine2   = {P_X1, I20_PIN_GND,  1, true,  I20_LINE2_VOLTAGE, 820000,  7400, 0.0};
-  I20Feedback feedback = {adcNumBits, adcPrescale, adcSampleTicks, adcVRefNdx,
+  I20Feedback feedback = {adcNumBits, adcPrescale, adcSampleTicks, adcVRefNdx, defaultAdcVRef,
                           {&vLine1, &vLine2, NULL, NULL, NULL, NULL}};
 
   bool testResult = true;
@@ -897,7 +897,7 @@ bool testAdcDoPwmMultipleSchedules() {
 
   I20FeedbackSignal vLine1   = {P_X4, I20_PIN_GND,  0, true,  I20_LINE1_VOLTAGE, 820000,  7400, 0.0};
   I20FeedbackSignal vLine2   = {P_X2, I20_PIN_GND,  0, true,  I20_LINE2_VOLTAGE, 820000,  7400, 0.0};
-  I20Feedback feedback = {adcNumBits, adcPrescale, adcSampleTicks, adcVRefNdx,
+  I20Feedback feedback = {adcNumBits, adcPrescale, adcSampleTicks, adcVRefNdx, defaultAdcVRef,
                           {&vLine1, &vLine2, NULL, NULL, NULL, NULL}};
 
   bool testResult = true;
@@ -918,7 +918,7 @@ bool testAdcDoPwmNotSet() {
 
   I20FeedbackSignal vLine1   = {P_X4, I20_PIN_GND,  0, false, I20_LINE1_VOLTAGE,  820000,  7400, 0.0};
   I20FeedbackSignal vLine2   = {P_X2, I20_PIN_GND,  0, false, I20_LINE2_VOLTAGE,  820000,  7400, 0.0};
-  I20Feedback feedback = {adcNumBits, adcPrescale, adcSampleTicks, adcVRefNdx,
+  I20Feedback feedback = {adcNumBits, adcPrescale, adcSampleTicks, adcVRefNdx, defaultAdcVRef,
                           {&vLine1, &vLine2, NULL, NULL, NULL, NULL}};
 
   bool testResult = true;
@@ -937,7 +937,7 @@ bool testAdcSchedTimeGtrPwmCycleTime() {
   Serial.printf("    START  -- testAdcSchedTimeGtrPwmCycleTime:\n");
 
   I20FeedbackSignal vLine1   = {P_X4, I20_PIN_GND,  0, true, I20_LINE1_VOLTAGE,  820000,  7400, 0.0};
-  I20Feedback feedback = {adcNumBits, adcPrescale, adcSampleTicks, adcVRefNdx,
+  I20Feedback feedback = {adcNumBits, adcPrescale, adcSampleTicks, adcVRefNdx, defaultAdcVRef,
                           {&vLine1, NULL, NULL, NULL, NULL, NULL}};
   
   bool testResult = true;

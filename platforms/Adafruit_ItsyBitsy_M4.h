@@ -28,6 +28,8 @@
                                             {"PA04", 18, PIO_ANALOG,     0,  4},  // A4 : ADC0
                                             {"PA06", 19, PIO_ANALOG,     0,  6}}; // A5 : ADC0
 
+  I20PinData adcVRefPin = {"PA03", 29, PIO_ANALOG, 0, 0};  // AREF
+
 // ADC config values for Adafruit ItsyBitsy M4
 // These are indices into InverterAdcCfg[] above
 

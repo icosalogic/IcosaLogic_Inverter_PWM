@@ -165,6 +165,8 @@ void IcosaLogic_Inverter_PWM::begin(I20InputParams* inParams) {
   }
   
   setupAdc();
+  
+  genSineWaveData();
 }
 
 /*
@@ -238,7 +240,7 @@ void IcosaLogic_Inverter_PWM::setupBasics() {
   
   setupFreqCfg();
   
-  genSineWaveData();
+  checkNumSamples();
 }
 
 
@@ -639,23 +641,14 @@ void IcosaLogic_Inverter_PWM::setupFreqCfg() {
 }
 
 /*
- * Generate the sine wave table based on the values in curFreqCfg.
- * We generate 2 sine wave tables:
- * 1. The ADC readings we expect to see in ADC feedback, adjusted by the resistor divider
- * 2. PWM duty cycle.  This will usually be adjusted down at runtime by the throttle.
+ * Calculate and verify the number of samples value.
  */
-void IcosaLogic_Inverter_PWM::genSineWaveData() {
-  // Serial.printf("genSineWaveData: enter\n");
-  
-  uint32_t startTicks = DWT->CYCCNT;
+void IcosaLogic_Inverter_PWM::checkNumSamples() {
+  // Serial.printf("checkNumSamples: enter\n");
   
   numSamples = curFreqCfg->pwmFreq / curFreqCfg->outputFreq;
   numSamplesDiv2 = numSamples / 2;
   
-  Serial.printf("    Generating sine wave data: pwmFreq=%d outFreq=%d numSamples=%d  ",
-                curFreqCfg->pwmFreq, curFreqCfg->outputFreq, numSamples);
-  Serial.flush();
-    
   if (numSamples > maxNumSamples) {
     setError(I20_ERR_NUMSAMPLES_MAX_EXCEEDED);
     Serial.println(" ");
@@ -666,6 +659,22 @@ void IcosaLogic_Inverter_PWM::genSineWaveData() {
     Serial.println(" ");
     return;
   }
+}
+
+/*
+ * Generate the sine wave table based on the values in curFreqCfg.
+ * We generate 2 sine wave tables:
+ * 1. The ADC readings we expect to see in ADC feedback, adjusted by the resistor divider
+ * 2. PWM duty cycle.  This will usually be adjusted down at runtime by the throttle.
+ */
+void IcosaLogic_Inverter_PWM::genSineWaveData() {
+  // Serial.printf("genSineWaveData: enter\n");
+
+  Serial.printf("    Generating sine wave data: pwmFreq=%d outFreq=%d numSamples=%d  ",
+                curFreqCfg->pwmFreq, curFreqCfg->outputFreq, numSamples);
+  Serial.flush();
+
+  uint32_t startTicks = DWT->CYCCNT;
   
   /*
    * Positive half:              Negative half:
@@ -686,7 +695,20 @@ void IcosaLogic_Inverter_PWM::genSineWaveData() {
   const double pi = 3.14159265359;
   const double pi2 = 2.0 * pi;
   const double dNumSamples = numSamples;
-  
+
+  double vfbAdj = 1.0;
+
+  if (vfbSet) {
+    // TODO: Figure these values for both single-ended and double-ended ADC readings
+    const double peakOutVolts = inputParams.outRmsVoltage * sqrt(2.0);
+    vfbAdj = peakOutVolts * resistorDivider * (double) curAdcResultSizeEntry->numValues / adcVRef;
+
+    const double measuredVolts = peakOutVolts * 2.0 * resistorDivider;
+    if (measuredVolts > adcVRef) {
+      setError(I20_ERR_PEAK_DIVIDED_VOLTAGE_EXCEEDS_ADC_VREF);
+    }
+  }
+
   for (int i = 0; i < numSamples; i++) {
     double sineValue = sin((double) i * pi2 / dNumSamples);
     
@@ -696,6 +718,13 @@ void IcosaLogic_Inverter_PWM::genSineWaveData() {
       pwmSineData1[i] = (int32_t)(rawSin + 0.5);
     } else {
       pwmSineData1[i] = (int32_t)(rawSin - 0.5);
+    }
+
+    // TODO:
+    // - Check for positive/negative rounding
+    // - Check for single-ended/double-ended conversions
+    if (vfbSet) {
+      adcSineData[i] = (int16_t) (sineValue * vfbAdj);
     }
   }
   
@@ -892,6 +921,7 @@ void IcosaLogic_Inverter_PWM::setupAdcBitSize() {
     AdcResultSizeEntry* p = &(adcResultSize[i]);
     if (p->numBits == inputParams.feedback->adcNumBits) {
       curAdcResultSizeEntry = p;
+      adcThrottleRatio = p->numValues / maxThrottle;
       bitSizeValid = true;
       break;
     }
@@ -953,6 +983,9 @@ void IcosaLogic_Inverter_PWM::setupAdcInitCfg() {
   
 	analogReference(fb->adcVRefNdx);                           // specify the AREF value
   adcVRef = adcReference[fb->adcVRefNdx].refVoltage;         // save AREF value for calculations
+  if (fb->adcVRefNdx == AR_EXTERNAL) {
+    adcVRef = fb->extVRefValue;
+  }
 }
 
 /*
@@ -975,56 +1008,12 @@ void IcosaLogic_Inverter_PWM::setupAdcEnable() {
 
 /*
  * Set up the different ADC schedules in the inverter.
- * TODO: If feedback is used, validate that doPwmHandler is set on at least one entry
  */
 void IcosaLogic_Inverter_PWM::setupAdcSchedule() {
   // Serial.printf("setupAdcSchedule: enter\n");
 
-  // generate target reference ADC voltage values, pre-adjusted by the resistor divider values
-  // each line may have different resistor values!!??
-  // Example1:  Vrms=120  Vpeak=169.7   Vrange=339.4   R1=820000  R2=7320  Vmax=372.97  vLsb=0.0910576
-  // Example2:  Vrms=130  Vpeak=183.84  Vrange=367.68  R1=820000  R2=7320  Vmax=372.97  
-  
-  /*
-  const double peakOutVolts = inputParams.outRmsVoltage * sqrt(2.0);
-  const double rangeOutVolts = peakOutVolts * 2.0;
-  const double resistorDivider = (double) feedback->vrBottom /
-                                 (double)(feedback->vrTop + feedback->vrBottom);
-  const double vMax = adcVRef / resistorDivider;
-  const double vLsb = vMax / curAdcResultSizeEntry->numValues;
-  
-  const double peakOutVoltsDiv = peakOutVolts * resistorDivider;
-  const double adcVoltage = peakOutVoltsDiv * (double)(curAdcResultSizeEntry->numValues) / adcVRef;
-  // assert vMax > rangeOutVolts
-  
-  Serial.print("    Vrms=");
-  Serial.print(inputParams.outRmsVoltage, 3);
-  Serial.print("  Vpp=");
-  Serial.print(peakOutVolts, 3);
-  Serial.print("  rdiv=");
-  Serial.print(resistorDivider, 5);
-  Serial.print("  Vdiv=");
-  Serial.print(dividedPeakVolts, 3);
-  Serial.print("  Vp_adc=");
-  Serial.println(adcVoltage, 3);
-  */
+  vfbSet = false;
     
-  /*
-  for (int i = 0; i < numSamples; i++) {
-    double sineValue = sin((double) i * pi2 / dNumSamples);
-    
-    // generate PWM values for 100% output, it will be throttled down at runtime
-    /*
-    rawSin = sineValue * adcVoltage;
-    if (rawSin > 0) {          // round up
-      rawSin += 0.5;
-    } else if (rawSin < 0) {   // round down
-      rawSin -= 0.5;
-    }
-    adcSineData[i] = (int16_t)rawSin;
-  }
-  */
-  
   // calculate time to perform one ADC conversion
   float adcFreq = Freq_48MHz / inputParams.feedback->adcPrescaleVal;
   float adcConversionSec = float(inputParams.feedback->adcSampleTicks + curAdcResultSizeEntry->numBits) / adcFreq;
@@ -1138,18 +1127,21 @@ void IcosaLogic_Inverter_PWM::setupAdcScheduleEntry(I20FeedbackSignal* fbs) {
       break;
     case I20_LINE1_VOLTAGE:
       lines[0].vfb = fbs;
+      setupAdcVfb(fbs);
       break;
     case I20_LINE2_CURRENT:
       lines[1].cfb  = fbs;
       break;
     case I20_LINE2_VOLTAGE:
       lines[1].vfb = fbs;
+      setupAdcVfb(fbs);
       break;
     case I20_LINE3_CURRENT:
       lines[2].cfb  = fbs;
       break;
     case I20_LINE3_VOLTAGE:
       lines[2].vfb = fbs;
+      setupAdcVfb(fbs);
       break;
   }
   
@@ -1205,6 +1197,19 @@ void IcosaLogic_Inverter_PWM::setupAdcScheduleEntry(I20FeedbackSignal* fbs) {
   }
   setupAdcInputCtrl(entry);
   getDestAddrResult(entry);
+}
+
+/*
+ * Set up the voltage feedback ratio.
+ */
+void IcosaLogic_Inverter_PWM::setupAdcVfb(I20FeedbackSignal* fbs) {
+  double resDiv = (double) fbs->vrBottom / (double)(fbs->vrTop + fbs->vrBottom);
+  if (!vfbSet) {
+    vfbSet = true;
+    resistorDivider = resDiv;
+  } else if (resDiv != resistorDivider) {
+    setError(I20_ERR_INCONSISTENT_RESISTOR_DIVIDERS);
+  }
 }
 
 /*
@@ -1405,7 +1410,7 @@ void IcosaLogic_Inverter_PWM::displayAdcScheduleEntry(AdcScheduleEntry* pEntry, 
 void IcosaLogic_Inverter_PWM::getDestAddrResult(AdcScheduleEntry* entry) {
   // Serial.printf("getDestAddrResult: enter\n");
   
-  uint16_t* pResult = NULL;
+  int16_t* pResult = NULL;
   switch (entry->fbs->fbType) {
     case I20_LINE1_CURRENT:
       pResult = &(lines[0].adcAmps1);      // was lines[entry->lineNum]
@@ -1546,20 +1551,6 @@ inline void IcosaLogic_Inverter_PWM::pwmHandler() {
     Tcc* tcc      = pld->pwmTcc;
     uint8_t chNum = pld->chNum;
     
-    /*
-    // Does adcSineData contain current readings or voltage readings?
-    // Skip if adcSineData (used as divisor below) is zero
-    if (adcSineData[pld->altNdx] != 0) {
-      // Calculate the linearized dimensionless load in the current PWM cycle
-      int16_t tmpLoad = (pld->adcAmps1 - curAdcResultSizeEntry->midPoint) * defaultMaxLoad / adcSineData[pld->sineNdx];  // altNdx???
-      if (tmpLoad < 0) {
-        tmpLoad = 0 - tmpLoad;
-      }
-      pld->load = (uint16_t) tmpLoad;
-      logUint16(&curLogEntry->pld[i].load, tmpLoad);
-    }
-    */
-    
     // target the next PWM cycle so we can set the upcoming duty cycle
     pld->sineNdx += 1;
     if (pld->sineNdx >= numSamples) {
@@ -1575,21 +1566,22 @@ inline void IcosaLogic_Inverter_PWM::pwmHandler() {
     }
     // logUint16(&curLogEntry->pld[i].altNdx, pld->altNdx);
     
-    /*
-    // calculate next voltage based on last 2 readings
-    // vDelta < 0 if predicted voltage is too low, and > 0 if prediction is too high
-    // range of duty cycle: 0..period
-    // range of adcVolts0 is 0..4095 (ADC range), or -2048..2047
-    // update the throttle based on the current load and predicted voltage
-    pld->adcVolts0 = pld->adcVolts1 + pld->adcVolts1 - pld->adcVolts2;
-    logUint16(&curLogEntry->pld[i].adcVolts0, pld->adcVolts0);
-    logUint16(&curLogEntry->pld[i].adcVolts1, pld->adcVolts1);
-    logUint16(&curLogEntry->pld[i].adcVolts2, pld->adcVolts2);
+    if (vfbSet) {
+      // Implementation of PD controller applied to voltage readings
+      pld->adcVolts0 = pld->adcVolts1 + pld->adcVolts1 - pld->adcVolts2;
+      // logUint16(&curLogEntry->pld[i].adcVolts0, pld->adcVolts0);
+      // logUint16(&curLogEntry->pld[i].adcVolts1, pld->adcVolts1);
+      // logUint16(&curLogEntry->pld[i].adcVolts2, pld->adcVolts2);
     
-    int32_t vDelta = (int32_t) pld->adcVolts0 - curAdcResultSizeEntry->midPoint - adcSineData[pld->sineNdx];
-    // pld->throttle *= (curAdcResultSizeEntry->midPoint + vDelta) / curAdcResultSizeEntry->midPoint;  // no adjustment for now
-    logUint16(&curLogEntry->pld[i].throttle, pld->throttle);
-    */
+      int32_t vDelta;
+      // single-ended update
+      // vDelta = (int32_t) pld->adcVolts0 - curAdcResultSizeEntry->midPoint - adcSineData[pld->sineNdx];
+    
+      // double-ended update
+      vDelta = abs(adcSineData[pld->sineNdx]) - abs(pld->adcVolts0);  // unpredictable at 0 crossing?
+      pld->throttle += vDelta / adcThrottleRatio;
+      // logUint16(&curLogEntry->pld[i].throttle, pld->throttle);
+    }
     
     // update the duty cycle based on the throttle
     int32_t throttledSineValue = (pwmSineData1[pld->sineNdx] * pld->throttle) / maxThrottle;
@@ -1703,11 +1695,9 @@ bool IcosaLogic_Inverter_PWM::isRunning() {
   return pwmTcc->CTRLA.bit.ENABLE;
 }
 
-/**************************************************************************/
-/*!
-    @brief  Get the number of complete sine waves generated.
-*/
-/**************************************************************************/
+/*
+ * Get the number of complete sine waves generated.
+ */
 uint32_t IcosaLogic_Inverter_PWM::getNumWaves() {
   return numWaves;
 }
@@ -1735,7 +1725,6 @@ void IcosaLogic_Inverter_PWM::dumpScaledSineData(bool atZero) {
   }
   Serial.printf("\n\n");
   
-  /*
   Serial.printf("ADC Sine Values: numSamples=%d  adcBits=%d  \n",
                 numSamples, inputParams.feedback->adcNumBits);
   valuesPerLine = 0;
@@ -1752,7 +1741,6 @@ void IcosaLogic_Inverter_PWM::dumpScaledSineData(bool atZero) {
     }
   }
   Serial.printf("\n");
-  */
 }
 
 /*

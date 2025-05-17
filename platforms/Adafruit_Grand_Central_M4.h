@@ -55,6 +55,8 @@
                                             {"PA06", 60, PIO_ANALOG,     0,  6},  // A14 : ADC0
                                             {"PA07", 61, PIO_ANALOG,     0,  7}}; // A15 : ADC0
 
+  I20PinData adcVRefPin = {"PA03", 84, PIO_ANALOG, 0, 0};  // AREF
+
 // ADC config values for Adafruit Grand Central M4
 // These are indices into InverterAdcCfg[] above
 

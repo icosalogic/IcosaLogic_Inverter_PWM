@@ -1,6 +1,11 @@
 /*
  * Include the board-specific files for the inverter.
  * Only the board set by the Arduino UI will actually be included.
+ * 
+ * External VREF constraints
+ * - VREFA - PA03
+ * - VREFB - PA04
+ * - VREFC - PA06
  */
 
 #include "platforms/Adafruit_Feather_M4.h"
