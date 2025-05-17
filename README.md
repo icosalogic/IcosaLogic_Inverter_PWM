@@ -334,6 +334,19 @@ A given TCC may support multiple IOSETs, but can only use one IOSET at a time.
 A TCC supports pairs of pins; half-bridge configurations use 1 pair of pins per line, while T-type
 configurations require 2 pairs per line.
 
+For example, say you were implementing a half-bridge inverter with 3 lines using an ItsyBitsy M4 Express.
+This would require 3 pairs of MOSFETs.
+The library would assign the following pairs of pins:
+
+| Line | MOSFET | Pin |
+| ---- | ------ | --- |
+|  L1  |   Q1   |   0 |
+|  L1  |   Q2   |  10 |
+|  L2  |   Q1   |   1 |
+|  L2  |   Q2   |  11 |
+|  L3  |   Q1   |   7 |
+|  L3  |   Q2   |  13 |
+
 A secondary constraint on pin assignments is how the Arduino analog input pins are declared for a given board.
 One common issue is that some boards declare most of the analog input pins to be on ADC0, with very few on ADC1.
 
