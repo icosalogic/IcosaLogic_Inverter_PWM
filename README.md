@@ -35,8 +35,9 @@ Calling `analog_write()` is also potentially a conflict.
 # Status
 This implementation is incomplete.
 - PWM signal generation is complete and seems robust
-- ADC scheduling is mostly complete, with the exception of an ongoing investigation into a timing issue handling interrupts for parallel readings
-- The framework for control is complete, but the last part to glue everything together is missing
+- ADC scheduling is mostly complete, with the exception of an ongoing investigation into a timing
+issue handling interrupts for parallel readings.  It works, but timing may be sub-optimal
+- The framework for control is complete, with a PD controller implemented.  Testing on real hardware is in progress
 - The entire library could use a ground-up refactoring
 - The documentation is incomplete
 
@@ -341,7 +342,7 @@ One common issue is that some boards declare most of the analog input pins to be
 The only usable TCC IOSET for PWM on this board is TCC1 IOSET1.
 
 | Pin | Pad  | Pair |
-| === | ==== | ==== |
+| --- | ---- | ---- |
 |  0  | PA16 |   1  |
 |  1  | PA17 |   2  |
 |  7  | PA18 |   3  |
@@ -354,7 +355,7 @@ The only usable TCC IOSET for PWM on this board is TCC1 IOSET1.
 Here are the available analog input pins.
 
 | APin | Pin | Pad  | ADC0 | ADC1 |
-| ==== | === | ==== | ==== | ==== |
+| ---- | --- | ---- | ---- | ---- |
 |  A0  |  14 | PA02 | Yes  |  No  |
 |  A1  |  15 | PA05 | Yes  |  No  |
 |  A2  |  16 | PB08 | Yes  |  Yes |
@@ -367,7 +368,7 @@ Here are the available analog input pins.
 The only usable TCC IOSET for PWM on this board is TCC1 IOSET1.
 
 | Pin | Pad  | Pair |
-| === | ==== | ==== |
+| --- | ---- | ---- |
 |  5  | PA16 |   1  |
 | 25  | PA17 |   2  |
 |  6  | PA18 |   3  |
@@ -380,7 +381,7 @@ The only usable TCC IOSET for PWM on this board is TCC1 IOSET1.
 Here are the available analog input pins.
 
 | APin | Pin | Pad  | ADC0 | ADC1 |
-| ==== | === | ==== | ==== | ==== |
+| ---- | --- | ---- | ---- | ---- |
 |  A0  |  14 | PA02 | Yes  |  No  |
 |  A1  |  15 | PA05 | Yes  |  No  |
 |  A2  |  16 | PB08 | Yes  |  Yes |
@@ -396,7 +397,7 @@ It is suitable for a maximum configuration inverter.
 The primary TCC configuration on this board is TCC1 IOSET1.
 
 | Pin | Pad  | Pair |
-| === | ==== | ==== |
+| --- | ---- | ---- |
 | 37  | PA16 |   1  |
 | 36  | PA17 |   2  |
 | 35  | PA18 |   3  |
@@ -409,7 +410,7 @@ The primary TCC configuration on this board is TCC1 IOSET1.
 A usable secondary is TCC0 IOSET2.
 
 | Pin | Pad  | Pair |
-| === | ==== | ==== |
+| --- | ---- | ---- |
 | 48  | PC04 |   1  |
 | 51  | PD08 |   2  |
 | 52  | PD09 |   3  |
@@ -422,7 +423,7 @@ A usable secondary is TCC0 IOSET2.
 Here are the available analog input pins.
 
 | APin | Pin | Pad  | ADC0 | ADC1 |
-| ==== | === | ==== | ==== | ==== |
+| ---- | --- | ---- | ---- | ---- |
 |  A0  |  67 | PA02 | Yes  |  No  |
 |  A1  |  68 | PA05 | Yes  |  No  |
 |  A2  |  69 | PB03 | Yes  |  No  |
