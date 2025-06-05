@@ -25,7 +25,8 @@ Calling `analog_write()` is also potentially a conflict.
 - Configurable PWM frequency
 - Configurable dead time insertion
 - 1, 2, or 3 output lines
-- Supports half-bridge or T-type implementations
+- Supports half-bridge or T-type inverter implementations
+- Supports half-bridge DC configuration
 - Detailed configuration of ADC operations to balance speed and precision
 - Flexible scheduling of ADC readings, using arbitrary combinations of the following:
     - Run readings in parallel on the 2 ADCs
@@ -83,7 +84,7 @@ frequency of 6kHz, and with no voltage or current feedback.
 
 // T-Type inverter, 1 output line at 60Hz, 6kHz PWM, 100ns dead time, no feedback
 I20InputParams inParams =
-    {I20_T_TYPE, I20_HWS_NONE, 120, 1, 60, 6000, I20_PS_TCC1, I20_PS_TCC0, 100, NULL};
+    {I20_T_TYPE, 120, 1, 60, 6000, I20_PS_TCC1, I20_PS_TCC0, 100, NULL};
 
 IcosaLogic_Inverter_PWM inverter;
 
@@ -164,8 +165,8 @@ The first objective for a user is to specify the input parameters.
 ```C++
 typedef struct {
   I20InvArch         invArch;                   // Inverter architecture
-  I20HalfWaveSignal  hws;                       // Half wave signal type
-  uint16_t           outRmsVoltage;             // target RMS voltage of output lines
+  uint16_t           outVoltage;                // target voltage of output lines (RMS for inverters)
+  uint16_t           outCurrent;                // output current
   uint8_t            numLines;                  // number of output lines
   uint8_t            outFreq;                   // output frequency, either 50 or 60 Hz
   uint32_t           pwmFreq;                   // PWM frequency
@@ -181,12 +182,11 @@ Each parameter is described below.
 - `invArch` Inverter Architecture
     - `I20_HALF_BRIDGE` Generate PWM signals for a half bridge configuration with 2 MOSFETs per line
     - `I20_T_TYPE` Generate PWM signals for a T-Type inverter with 4 MOSFETs per line
-- `hws` Half Wave Signal is an optional output signal that is high for half of the output sine wave
-    - `I20_HWS_NONE` Don't generate a half-wave signal
-    - `I20_HWS_SINGLE` Generate a single half wave signal
-    - `I20_HWS_PAIR` Generate a pair of opposite half-wave signals, with dead time inserted between transitions
-- `outRmsVoltage` Target RMS voltage of output<br>
+    - `I20_DC` Generate PWM signals for DC output using a half bridge configuration with 2 MOSFETs per line
+- `outVoltage` Target RMS voltage of output<br>
     - This integer number is meaningful only if feedback is used
+- `outCurrent` Target current of output<br>
+    - This integer number is meaningful only if feedback is used, primarily for current-limited DC output
 - `numLines` The number of output lines, which determines the number of PWM signals to generate<br>
     - An integer value from 1 to 3, inclusive
 - `outFreq` The frequency of the output lines
