@@ -21,7 +21,6 @@
  * 
  * 
  * TODO:
- * - Delete altNdx which is not used
  * - Delete half wave signal
  * - Save multiple feedback sets, use predictor to set throttle
  * - Desired output value
@@ -564,20 +563,16 @@ void IcosaLogic_Inverter_PWM::setupSineWaveIndices() {
 
   // line 0 always starts at 0
   lines[0].sineNdx = 0;
-  lines[0].altNdx  = 0;
   
   if (iNumLines == 2) {
     // 2 lines, the second wave starts half way through the array
     lines[1].sineNdx = numSamples / 2;
-    lines[1].altNdx  = lines[1].sineNdx;
   } else if (iNumLines == 3) {
     // 3 lines, the second wave starts at 2/3 the way, this will make it the 
     // second wave to cross the x-axis from negative to positive.
     lines[1].sineNdx = numSamples * 2 / 3;
-    lines[1].altNdx = lines[1].sineNdx;
     // The third wave starts 1/3 of the way into the array
     lines[2].sineNdx = numSamples / 3;
-    lines[2].altNdx = lines[2].sineNdx;
   }
   
   // reset number of sine waves generated
@@ -1643,12 +1638,6 @@ inline void IcosaLogic_Inverter_PWM::pwmHandler() {
           numWaves += 1;
         }
       }
-      // logUint16(&curLogEntry->pld[i].sineNdx, pld->sineNdx);
-      pld->altNdx += 1;
-      if (pld->altNdx >= numSamplesDiv2) {
-        pld->altNdx = 0;
-      }
-      // logUint16(&curLogEntry->pld[i].altNdx, pld->altNdx);
 
       if (vfbSet) {
         // Implementation of PD controller applied to voltage readings
@@ -1986,8 +1975,8 @@ void IcosaLogic_Inverter_PWM::dumpPerLineDataEntry(uint8_t i, PerLineData* pld) 
   Serial.printf("Line %d: pwmTcc=%08x pwmCh=%d hwsTcc=%08x hwsCh=%d ",
                 i + 1, pld->pwmTcc, pld->chNum, pld->hwsTcc, pld->hwsChNum);
   Serial.flush();
-  Serial.printf("Ndx=%5d Alt=%5d thr=%4d load=%d ",
-                pld->sineNdx, pld->altNdx, pld->throttle, pld->load);
+  Serial.printf("Ndx=%5d thr=%4d load=%d ",
+                pld->sineNdx, pld->throttle, pld->load);
   Serial.flush();
   Serial.printf("v0=%d v1=%d v1p=%d v2=%d a0=%d a1=%d a1p=%d a2=%d\n",
                 pld->adcVolts0, pld->adcVolts1, pld->adcVolts1p, pld->adcVolts2,

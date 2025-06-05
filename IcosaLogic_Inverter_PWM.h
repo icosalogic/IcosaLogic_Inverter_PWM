@@ -186,7 +186,6 @@ typedef struct {
   uint16_t           chNum;                     // base channel number for this line
   uint16_t           hwsChNum;                  // HWS channel number
   uint16_t           sineNdx;                   // index into reference sine wave array
-  uint16_t           altNdx;                    // half wave index for positive-only values
   uint16_t           throttle;                  // applied to reference value to get target volts
   uint16_t           load;                      // applied to reference value to get target load 
   // should these be int16_t???
