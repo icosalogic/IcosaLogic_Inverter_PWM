@@ -5,7 +5,7 @@ feedback signals such as voltage and current readings to accurately control thos
 The user describes the inverter configuration in an input parameters structure, and the library
 manages operation of the inverter with no further interaction from the application.
 The input parameters tell the library how the PWM signals should be generated,
-and how feedback signals like voltage and current readings should be performed.
+and how feedback signals like voltage and current readings should be interpreted.
 The library does the rest.
 
 This library is targeted specifically for the SAMD51 processor architecture.

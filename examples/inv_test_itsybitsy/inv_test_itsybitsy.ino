@@ -24,6 +24,7 @@ const I20InvArch        invArch        = I20_T_TYPE;
 const I20HalfWaveSignal hws            = I20_HWS_NONE;
 const uint8_t           numLines       = 1;
 const uint16_t          outRmsVoltage  = 120;
+const uint16_t          outCurrent     = 50;
 const uint8_t           outputFreq     = 60;
 const uint32_t          pwmFreq        = 60000;
 const uint16_t          deadTimeNs     = 100;
@@ -78,6 +79,7 @@ I20Feedback fb_max          = {adcNumBits, adcPrescale, adcSampleTicks, adcVRefN
 I20InputParams defaultParams = {invArch,         // inverter architecture
                                 hws,             // half wave signal to generate
                                 outRmsVoltage,   // RMS voltage of output lines
+                                outCurrent,      // output current
                                 numLines,        // number of output lines
                                 outputFreq,      // output frequency, either 50 or 60 Hz
                                 pwmFreq,         // PWM frequency

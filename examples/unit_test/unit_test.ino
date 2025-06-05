@@ -20,6 +20,7 @@ const I20InvArch        invArch        = I20_T_TYPE;
 const I20HalfWaveSignal hws            = I20_HWS_NONE;
 const uint8_t           numLines       = 2;
 const uint16_t          outRmsVoltage  = 120;
+const uint16_t          outCurrent     = 50;
 const uint8_t           outputFreq     = 60;
 const uint32_t          pwmFreq        = 6000;
 const uint16_t          deadTimeNs     = 50;
@@ -64,6 +65,7 @@ I20Feedback feedback = {adcNumBits, adcPrescale, adcSampleTicks, adcVRefNdx, def
 I20InputParams defaultParams = {invArch,         // inverter architecture
                                 hws,             // half wave signal to generate
                                 outRmsVoltage,   // RMS voltage of output lines
+                                outCurrent,      // output current
                                 numLines,        // number of output lines
                                 outputFreq,      // output frequency, either 50 or 60 Hz
                                 pwmFreq,         // PWM frequency
@@ -310,6 +312,10 @@ I20UnitTestInfo testInfo[] = {
   {testAdcDoPwmMultipleSchedules,                   "testAdcDoPwmMultipleSchedules"},
   {testAdcDoPwmNotSet,                              "testAdcDoPwmNotSet"},
   {testAdcSchedTimeGtrPwmCycleTime,                 "testAdcSchedTimeGtrPwmCycleTime"},
+  {testAdcDiffNegPinInvalid,                        "testAdcDiffNegPinInvalid"},
+  {testAdcDiffAdcMismatch,                          "testAdcDiffAdcMismatch"},
+  {testAdcDiffValid,                                "testAdcDiffValid"},
+  {testDcValid,                                     "testDcValid"},
 };
 
 
@@ -951,6 +957,87 @@ bool testAdcSchedTimeGtrPwmCycleTime() {
   inverter.printErrors();
   
   Serial.printf("    %6s -- testAdcSchedTimeGtrPwmCycleTime\n", testResult ? "PASSED" : "FAILED");
+  return testResult;
+}
+
+// Verify that we detect when an ADC differential reading uses an invalid negative input pin
+// This test can only be tested on the Adafruit Grand Central
+bool testAdcDiffNegPinInvalid() {
+  Serial.printf("    START  -- testAdcDiffNegPinInvalid:\n");
+
+  bool testResult = true;
+
+#ifdef _VARIANT_GRAND_CENTRAL_M4_
+  I20FeedbackSignal aLine1d  = {P_X3, P_X2, 0, true, I20_LINE1_CURRENT, 0, 0, 0.025177};
+  I20Feedback feedback = {adcNumBits, adcPrescale, adcSampleTicks, adcVRefNdx, defaultAdcVRef,
+                          {&aLine1d, NULL, NULL, NULL, NULL, NULL}};
+
+  memcpy(&inParams, &defaultParams, sizeof(I20InputParams));
+  inParams.feedback = &feedback;
+  inverter.begin(&inParams);
+  testResult &= errorDetected(I20_ERR_NEG_ADC_CHANNEL_INVALID);
+  inverter.printErrors();
+#endif
+
+  Serial.printf("    %6s -- testAdcDiffNegPinInvalid\n", testResult ? "PASSED" : "FAILED");
+  return testResult;
+}
+
+// Verify that we detect when an ADC differential reading uses pins from different ADCs
+bool testAdcDiffAdcMismatch() {
+  Serial.printf("    START  -- testAdcDiffAdcMismatch:\n");
+
+  I20FeedbackSignal aLine1d  = {P_X2, P_X0, 0, true, I20_LINE1_CURRENT, 0, 0, 0.025177};
+  I20Feedback feedback = {adcNumBits, adcPrescale, adcSampleTicks, adcVRefNdx, defaultAdcVRef,
+                          {&aLine1d, NULL, NULL, NULL, NULL, NULL}};
+
+  bool testResult = true;
+  memcpy(&inParams, &defaultParams, sizeof(I20InputParams));
+  inParams.feedback = &feedback;
+  inverter.begin(&inParams);
+  testResult &= errorDetected(I20_ERR_POS_AND_NEG_ON_DIFFERENT_ADC);
+  inverter.printErrors();
+
+  Serial.printf("    %6s -- testAdcDiffAdcMismatch\n", testResult ? "PASSED" : "FAILED");
+  return testResult;
+}
+
+// Verify that we accept an ADC differential configuration using valid pins
+bool testAdcDiffValid() {
+  Serial.printf("    START  -- testAdcDiffValid:\n");
+
+  I20FeedbackSignal aLine1d  = {P_X0, P_X1, 0, true, I20_LINE1_CURRENT, 0, 0, 0.025177};
+  I20Feedback feedback = {adcNumBits, adcPrescale, adcSampleTicks, adcVRefNdx, defaultAdcVRef,
+                          {&aLine1d, NULL, NULL, NULL, NULL, NULL}};
+
+  bool testResult = true;
+  memcpy(&inParams, &defaultParams, sizeof(I20InputParams));
+  inParams.feedback = &feedback;
+  inverter.begin(&inParams);
+  testResult &= inverter.getNumErrors() == 0;
+  inverter.printErrors();
+
+  Serial.printf("    %6s -- testAdcDiffValid\n", testResult ? "PASSED" : "FAILED");
+  return testResult;
+}
+
+// Verify that we accept a DC configuration
+bool testDcValid() {
+  Serial.printf("    START  -- testDcValid:\n");
+
+  I20FeedbackSignal vLine1   = {P_X2, I20_PIN_GND,  0, true,  I20_LINE1_VOLTAGE, 820000,  7400, 0.0};
+  I20FeedbackSignal aLine1d  = {P_X0, P_X1,         0, false, I20_LINE1_CURRENT, 0, 0, 0.025177};
+  I20Feedback feedback = {adcNumBits, adcPrescale, adcSampleTicks, adcVRefNdx, defaultAdcVRef,
+                          {&aLine1d, &vLine1, NULL, NULL, NULL, NULL}};
+
+  bool testResult = true;
+  memcpy(&inParams, &defaultParams, sizeof(I20InputParams));
+  inParams.feedback = &feedback;
+  inverter.begin(&inParams);
+  testResult &= inverter.getNumErrors() == 0;
+  inverter.printErrors();
+
+  Serial.printf("    %6s -- testDcValid\n", testResult ? "PASSED" : "FAILED");
   return testResult;
 }
 

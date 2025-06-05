@@ -34,19 +34,22 @@
 
   const InverterTimerCfg* timerCfg[5] = {NULL, &MetGcTcc02Cfg, &MetGcTcc03Cfg, &MetGcTcc11Cfg, NULL};
   
+  // !NEG below flags pins that cannot be used as a negative pin for a differential ADC reading.
+  // Only pins with a channel number <= 7 can be used as the negative pin.
+  
   static const int numAdcConfigs = 18;
   I20PinData InverterAdcCfg[numAdcConfigs] = {
                                             {"PA02", 67, PIO_ANALOG,     0,  0},  // A0  : ADC0
                                             {"PA05", 68, PIO_ANALOG,     0,  5},  // A1  : ADC0
-                                            {"PB03", 69, PIO_ANALOG,     0, 15},  // A2  : ADC0
-                                            {"PC00", 70, PIO_ANALOG,     1, 10},  // A3  : ADC1
-                                            {"PC01", 71, PIO_ANALOG,     1, 11},  // A4  : ADC1
+                                            {"PB03", 69, PIO_ANALOG,     0, 15},  // A2  : ADC0 !NEG
+                                            {"PC00", 70, PIO_ANALOG,     1, 10},  // A3  : ADC1 !NEG
+                                            {"PC01", 71, PIO_ANALOG,     1, 11},  // A4  : ADC1 !NEG
                                             {"PC02", 72, PIO_ANALOG,     1,  4},  // A5  : ADC1
                                             {"PC03", 73, PIO_ANALOG,     1,  5},  // A6  : ADC1
                                             {"PB04", 74, PIO_ANALOG,     1,  6},  // A7  : ADC1
                                             {"PB05", 54, PIO_ANALOG,     1,  7},  // A8  : ADC1
-                                            {"PB06", 55, PIO_ANALOG,     1,  8},  // A9  : ADC1
-                                            {"PB07", 56, PIO_ANALOG,     1,  9},  // A10 : ADC1
+                                            {"PB06", 55, PIO_ANALOG,     1,  8},  // A9  : ADC1 !NEG
+                                            {"PB07", 56, PIO_ANALOG,     1,  9},  // A10 : ADC1 !NEG
                                             {"PB08", 57, PIO_ANALOG,     0,  2},  // A11 : ADC0
                                             {"PB08", 57, PIO_ANALOG,     1,  0},  // A11 : ADC1
                                             {"PB09", 58, PIO_ANALOG,     0,  3},  // A12 : ADC0

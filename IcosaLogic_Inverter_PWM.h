@@ -84,6 +84,8 @@ typedef enum {
   I20_ERR_REQUESTED_RESOURCES_EXCEEDS_AVAILABLE,
   I20_ERR_INCONSISTENT_RESISTOR_DIVIDERS,
   I20_ERR_PEAK_DIVIDED_VOLTAGE_EXCEEDS_ADC_VREF,
+  I20_ERR_NEG_ADC_CHANNEL_INVALID,
+  I20_ERR_PEAK_CURRENT_EXCEEDS_ADC_LIMIT,
   I20_ERR_LAST_ERROR_NUMBER,                            // keep this entry last
 } I20_ERROR_NUMBER;
 
@@ -103,7 +105,8 @@ const float defaultAdcVRef = 3.3;
  *   T-type designs use 4 MOSFETs per output line. */
 enum I20InvArch {
   I20_HALF_BRIDGE,
-  I20_T_TYPE
+  I20_T_TYPE,
+  I20_DC              // half bridge DC-DC converter
 };
 
 /**! Specify what type, if any, half-wave signal is generated per output line.
@@ -161,7 +164,8 @@ typedef struct {
 typedef struct {
   I20InvArch         invArch;                   // Inverter architecture
   I20HalfWaveSignal  hws;                       // Half wave signal type
-  uint16_t           outRmsVoltage;             // target RMS voltage of output lines
+  float              outVoltage;                // target output voltage
+  float              outCurrent;                // max output current
   uint8_t            numLines;                  // number of output lines
   uint8_t            outFreq;                   // output frequency, either 50 or 60 Hz
   uint32_t           pwmFreq;                   // PWM frequency
@@ -177,8 +181,8 @@ typedef struct {
   Tcc*               hwsTcc;                    // HWS TCC for this line
   I20FeedbackSignal* cfb;                       // current feedback
   I20FeedbackSignal* vfb;                       // voltage feedback
-  uint32_t           aLsb;                      // micro amps per ADC LSB (units 10 uA)  ** these LSB values are common **
-  uint32_t           vLsb;                      // micro volts per ADC LSB (units 10 uV) ** move them **
+  uint16_t           aMaxDc;                    // Max current ADC reading for DC converter
+  uint16_t           vMaxDc;                    // Max voltage ADC reading for DC converter
   uint16_t           chNum;                     // base channel number for this line
   uint16_t           hwsChNum;                  // HWS channel number
   uint16_t           sineNdx;                   // index into reference sine wave array
@@ -273,7 +277,7 @@ protected:
     uint8_t  adcChannel;
   } I20PinData;
 
-  const char* invArchNames[2] = {"HB", "TT"};
+  const char* invArchNames[3] = {"HB", "TT", "DC"};
   const char* halfWaveSignalNames[3] = {"none", "single", "pair"};
 
   static const int numFeedbackTypes = 9;
@@ -493,6 +497,7 @@ protected:
   void checkNumSamples();
   void genSineWaveData();
   void setupFreqCfg();
+  void setupDc();
   
   void setupTccs();
   void setupTcc(int tccNum);
@@ -506,6 +511,7 @@ protected:
   void setupAdcInitCfg();
   void setupAdcSchedule();
   void setupAdcScheduleEntry(I20FeedbackSignal* fbs);
+  void setupAdcInputPin(uint16_t adcPinNum, uint16_t schedPos);
   void setupAdcVfb(I20FeedbackSignal* fbs);
   void setupAdcInputCtrl(AdcScheduleEntry* entry);
   void setupAdcEnable();
@@ -563,6 +569,8 @@ protected:
     "Requested resources exceeds available resources",
     "Resistor dividers must be consistent for all lines",
     "Peak voltage through resistor divider exceeds ADC voltage reference",
+    "Negative pin for differential ADC reading must have a channel number <= 7",
+    "Peak current divided by aLsb exceeds ADC maximum",
   };
 
   static const int maxNumErrors = 100;
