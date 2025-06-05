@@ -21,14 +21,14 @@ bool displayLog = false;
 
 // Basic inverter configuration values
 const I20InvArch        invArch        = I20_T_TYPE;
-const uint8_t           numLines       = 1;
+const uint8_t           numLines       = 2;
 const uint16_t          outRmsVoltage  = 120;
 const uint16_t          outCurrent     = 50;
-const uint8_t           outputFreq     = 50;
-const uint32_t          pwmFreq        = 400;
+const uint8_t           outputFreq     = 60;
+const uint32_t          pwmFreq        = 48000;
 const uint16_t          deadTimeNs     = 100;
 const uint8_t           adcNumBits     = 12;
-const uint16_t          adcPrescale    = 32;
+const uint16_t          adcPrescale    = 16;
 const uint16_t          adcSampleTicks = 6;
 const eAnalogReference  adcVRefNdx     = AR_DEFAULT;
 
@@ -77,13 +77,13 @@ I20Feedback fb_max          = {adcNumBits, adcPrescale, adcSampleTicks, adcVRefN
 
 // ADC0  2 sequential readings A2, A3
 I20FeedbackSignal fbs0701   = {I20_PIN_A2_ADC0, I20_PIN_GND,  0, false, I20_LINE1_VOLTAGE, 820000,  7400, 0.0};
-I20FeedbackSignal fbs0702   = {I20_PIN_A3_ADC0, I20_PIN_GND,  1, true,  I20_LINE1_VOLTAGE, 820000,  7400, 0.0};
+I20FeedbackSignal fbs0702   = {I20_PIN_A3_ADC0, I20_PIN_GND,  1, true,  I20_LINE2_VOLTAGE, 820000,  7400, 0.0};
 I20Feedback fb_1adc0_2e     = {adcNumBits, adcPrescale, adcSampleTicks, adcVRefNdx, defaultAdcVRef,
                                {&fbs0701, &fbs0702, NULL}};
 
 // ADC1  2 sequential readings A2, A3
 I20FeedbackSignal fbs0801   = {I20_PIN_A2_ADC1, I20_PIN_GND,  0, false, I20_LINE1_VOLTAGE, 820000,  7400, 0.0};
-I20FeedbackSignal fbs0802   = {I20_PIN_A3_ADC1, I20_PIN_GND,  1, true,  I20_LINE1_VOLTAGE, 820000,  7400, 0.0};
+I20FeedbackSignal fbs0802   = {I20_PIN_A3_ADC1, I20_PIN_GND,  1, true,  I20_LINE2_VOLTAGE, 820000,  7400, 0.0};
 I20Feedback fb_1adc1_2e     = {adcNumBits, adcPrescale, adcSampleTicks, adcVRefNdx, defaultAdcVRef,
                                {&fbs0801, &fbs0802, NULL}};
 
@@ -112,7 +112,7 @@ I20FeedbackSignal fbs1105   = {I20_PIN_A3_ADC0, I20_PIN_GND,  1, true,  I20_LINE
 I20Feedback fb_1adc0_4s1    = {adcNumBits, adcPrescale, adcSampleTicks, adcVRefNdx, defaultAdcVRef,
                                {&fbs1101, &fbs1102, &fbs1103, &fbs1104, NULL }};
 
-// ADC0 3 sibling readings position 0  3 sibling readings position 1
+// ADC0 2 siblings in positions 0, 1, and 2
 I20FeedbackSignal fbs1201   = {I20_PIN_A4_ADC0, I20_PIN_GND,  0, false, I20_LINE1_VOLTAGE,   820000,  7400, 0.0};
 I20FeedbackSignal fbs1202   = {I20_PIN_A2_ADC0, I20_PIN_GND,  0, false, I20_LINE2_VOLTAGE,   820000,  7400, 0.0};
 I20FeedbackSignal fbs1203   = {I20_PIN_A5_ADC0, I20_PIN_GND,  1, true,  I20_LINE1_CURRENT,        0,     0, 0.025177};
@@ -121,6 +121,12 @@ I20FeedbackSignal fbs1205   = {I20_PIN_A0_ADC0, I20_PIN_GND,  2, false, I20_BATT
 I20FeedbackSignal fbs1206   = {I20_PIN_A1_ADC0, I20_PIN_GND,  2, false, I20_BATTMID_VOLTAGE, 820000,  4460, 0.0};
 I20Feedback fb_1adc0_2s0_2s1_2s2  = {adcNumBits, adcPrescale, adcSampleTicks, adcVRefNdx, defaultAdcVRef,
                                      {&fbs1201, &fbs1202, &fbs1203, &fbs1204, &fbs1205, &fbs1206 }};
+
+// ADC0 and ADC1 in parallel 1 reading each
+I20FeedbackSignal fbs1301   = {I20_PIN_A4_ADC0, I20_PIN_GND,  0, false, I20_LINE1_VOLTAGE,   820000,  7400, 0.0};
+I20FeedbackSignal fbs1302   = {I20_PIN_A2_ADC1, I20_PIN_GND,  0, true,  I20_LINE2_VOLTAGE,   820000,  7400, 0.0};
+I20Feedback fb_2adc_2v      = {adcNumBits, adcPrescale, adcSampleTicks, adcVRefNdx, defaultAdcVRef,
+                               {&fbs1301, &fbs1302, NULL, NULL, NULL }};
 
 I20InputParams defaultParams = {invArch,         // inverter architecture
                                 outRmsVoltage,   // RMS voltage of output lines
@@ -131,19 +137,13 @@ I20InputParams defaultParams = {invArch,         // inverter architecture
                                 I20_PS_TCC1,     // Primary TCC configuration to use
                                 I20_PS_TCC0,     // Secondary TCC configuration to use
                                 deadTimeNs,      // dead time between MOSFET transitions
-                                NULL,            // Replace this with one of the feedback configs above
+                                &fb_2adc_2v,     // Any of the feedback configs above
                               };
 I20InputParams inParams;
 
 IcosaLogic_Inverter_PWM inverter;                  // inverter object
 
 SAMD51_Dumpster ilsd;
-
-// IRQ counters
-volatile uint32_t numTcc0_0_IrqRaw = 0;
-volatile uint32_t numTcc1_0_IrqRaw = 0;
-volatile uint32_t numAdc0_1_IrqRaw = 0;
-volatile uint32_t numAdc1_1_IrqRaw = 0;
 
 volatile bool inverterRunning = false;
 volatile uint32_t startTicks = 0;
@@ -157,7 +157,6 @@ void setup() {
   setupSerial();
   ilsd.begin(true);
 
-  // setupAndRunInverter();
   memcpy(&inParams, &defaultParams, sizeof(I20InputParams));
   inverter.begin(&inParams);
   
@@ -186,67 +185,6 @@ void setupSerial() {
   
   Serial.println(" ");
   Serial.println("\n\nIcosaLogic_Inverter_PWM Test Inverter App\n\n");
-}
-
-/*
- * Set up and run the inverter for a few sine wave cycles.
- */
-void setupAndRunInverter() {
-  memcpy(&inParams, &defaultParams, sizeof(I20InputParams));
-  inverter.begin(&inParams);
-  
-  if (checkErrors() > 0) {
-    Serial.printf("not started due to errors\n");
-  } else {
-    uint32_t maxExtraDelays = 100;
-    uint32_t expectedMs = 1000 * numWaveLimit / inParams.outFreq;
-    
-    inverter.start();
-    startTicks = DWT->CYCCNT;
-    
-    // wait for inverter to stop
-    delay(expectedMs);
-    for (int i = 0; i < maxExtraDelays && inverter.isRunning(); i++) {
-      delay(2);
-    }
-    
-    if (inverter.isRunning()) {
-      Serial.printf("           -- inverter would not stop\n");
-    } else {
-      bool result = checkIntervalInRange(expectedMs, 3);
-      
-      Serial.printf("    IRQ counts: TCC0 %d TCC1 %d ADC0 %d  ADC1 %d\n",
-                    numTcc0_0_IrqRaw, numTcc1_0_IrqRaw, numAdc0_1_IrqRaw, numAdc1_1_IrqRaw);
-      if (numTcc0_0_IrqRaw + numTcc1_0_IrqRaw == 0) {
-        Serial.printf("TCC IRQ count should be > 0\n");
-      }
-    }
-    inverter.dumpLog(false);
-  }
-}
-
-/*
- * Returns true if the elapsed run time is within the allowable delta percentage.
- */
-bool checkIntervalInRange(uint32_t expectedMs, uint8_t deltaPercentAllowed) {
-  uint32_t elapsedTicks = stopTicks - startTicks;
-  if (stopTicks < startTicks) {
-    // the clock wrapped during the test
-    elapsedTicks = (0xffffffff - startTicks) + stopTicks;
-  }
-  const uint32_t ticksPerMs = 120 * 1000;             // assumes 120 MHz clock
-  uint32_t elapsedMs = elapsedTicks / ticksPerMs;
-  
-  uint32_t deltaMs = expectedMs * deltaPercentAllowed / 100;
-  uint32_t expectedMsMin = expectedMs - deltaMs;
-  uint32_t expectedMsMax = expectedMs + deltaMs;
-  
-  Serial.printf("           -- elapsed ms min %d actual %d max %d\n",
-                expectedMsMin, elapsedMs, expectedMsMax);
-                    
-  bool result = expectedMsMin <= expectedMs && expectedMs <= expectedMsMax;
-  
-  return result;
 }
 
 /*
@@ -295,7 +233,6 @@ void loop() {
  * Handler for TCC0 OVF interrupts.
  */
 void TCC0_0_Handler() {
-  numTcc0_0_IrqRaw += 1;
   inverter.tccxHandler(0);
   
   if (numWaveLimit > 0 && inverter.getNumWaves() >= numWaveLimit) {
@@ -309,7 +246,6 @@ void TCC0_0_Handler() {
  * Handler for TCC1 OVF interrupts.
  */
 void TCC1_0_Handler() {
-  numTcc1_0_IrqRaw += 1;
   inverter.tccxHandler(1);
   
   if (numWaveLimit > 0 && inverter.getNumWaves() >= numWaveLimit) {
@@ -323,7 +259,6 @@ void TCC1_0_Handler() {
  * Handler for ADC0 RESRDY interrupt.
  */
 void ADC0_1_Handler() {
-  numAdc0_1_IrqRaw += 1;
   inverter.adc0Handler();
 }
 
@@ -331,13 +266,5 @@ void ADC0_1_Handler() {
  * Handler for ADC1 RESRDY interrupt.
  */
 void ADC1_1_Handler() {
-  numAdc1_1_IrqRaw += 1;
   inverter.adc1Handler();
-}
-
-void resetIrqCounts() {
-  numTcc0_0_IrqRaw = 0;
-  numTcc1_0_IrqRaw = 0;
-  numAdc0_1_IrqRaw = 0;
-  numAdc1_1_IrqRaw = 0;
 }

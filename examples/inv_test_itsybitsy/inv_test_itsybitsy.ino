@@ -25,7 +25,7 @@ const uint8_t           numLines       = 1;
 const uint16_t          outRmsVoltage  = 120;
 const uint16_t          outCurrent     = 50;
 const uint8_t           outputFreq     = 60;
-const uint32_t          pwmFreq        = 60000;
+const uint32_t          pwmFreq        = 48000;
 const uint16_t          deadTimeNs     = 100;
 const uint8_t           adcNumBits     = 12;
 const uint16_t          adcPrescale    = 32;
@@ -92,12 +92,6 @@ IcosaLogic_Inverter_PWM inverter;                  // inverter object
 
 SAMD51_Dumpster ilsd;
 
-// IRQ counters
-volatile uint32_t numTcc0_0_IrqRaw = 0;
-volatile uint32_t numTcc1_0_IrqRaw = 0;
-volatile uint32_t numAdc0_1_IrqRaw = 0;
-volatile uint32_t numAdc1_1_IrqRaw = 0;
-
 volatile bool inverterRunning = false;
 volatile uint32_t startTicks = 0;
 volatile uint32_t stopTicks = 0;
@@ -110,7 +104,6 @@ void setup() {
   setupSerial();
   ilsd.begin(true);
 
-  // setupAndRunInverter();
   memcpy(&inParams, &defaultParams, sizeof(I20InputParams));
   inverter.begin(&inParams);
   
@@ -139,67 +132,6 @@ void setupSerial() {
   
   Serial.println(" ");
   Serial.println("\n\nIcosaLogic_Inverter_PWM Test Inverter App\n\n");
-}
-
-/*
- * Set up and run the inverter for a few sine wave cycles.
- */
-void setupAndRunInverter() {
-  memcpy(&inParams, &defaultParams, sizeof(I20InputParams));
-  inverter.begin(&inParams);
-  
-  if (checkErrors() > 0) {
-    Serial.printf("not started due to errors\n");
-  } else {
-    uint32_t maxExtraDelays = 100;
-    uint32_t expectedMs = 1000 * numWaveLimit / inParams.outFreq;
-    
-    inverter.start();
-    startTicks = DWT->CYCCNT;
-    
-    // wait for inverter to stop
-    delay(expectedMs);
-    for (int i = 0; i < maxExtraDelays && inverter.isRunning(); i++) {
-      delay(2);
-    }
-    
-    if (inverter.isRunning()) {
-      Serial.printf("           -- inverter would not stop\n");
-    } else {
-      bool result = checkIntervalInRange(expectedMs, 3);
-      
-      Serial.printf("    IRQ counts: TCC0 %d TCC1 %d ADC0 %d  ADC1 %d\n",
-                    numTcc0_0_IrqRaw, numTcc1_0_IrqRaw, numAdc0_1_IrqRaw, numAdc1_1_IrqRaw);
-      if (numTcc0_0_IrqRaw + numTcc1_0_IrqRaw == 0) {
-        Serial.printf("TCC IRQ count should be > 0\n");
-      }
-    }
-    inverter.dumpLog(false);
-  }
-}
-
-/*
- * Returns true if the elapsed run time is within the allowable delta percentage.
- */
-bool checkIntervalInRange(uint32_t expectedMs, uint8_t deltaPercentAllowed) {
-  uint32_t elapsedTicks = stopTicks - startTicks;
-  if (stopTicks < startTicks) {
-    // the clock wrapped during the test
-    elapsedTicks = (0xffffffff - startTicks) + stopTicks;
-  }
-  const uint32_t ticksPerMs = 120 * 1000;             // assumes 120 MHz clock
-  uint32_t elapsedMs = elapsedTicks / ticksPerMs;
-  
-  uint32_t deltaMs = expectedMs * deltaPercentAllowed / 100;
-  uint32_t expectedMsMin = expectedMs - deltaMs;
-  uint32_t expectedMsMax = expectedMs + deltaMs;
-  
-  Serial.printf("           -- elapsed ms min %d actual %d max %d\n",
-                expectedMsMin, elapsedMs, expectedMsMax);
-                    
-  bool result = expectedMsMin <= expectedMs && expectedMs <= expectedMsMax;
-  
-  return result;
 }
 
 /*
@@ -248,7 +180,6 @@ void loop() {
  * Handler for TCC0 OVF interrupts.
  */
 void TCC0_0_Handler() {
-  numTcc0_0_IrqRaw += 1;
   inverter.tccxHandler(0);
   
   if (numWaveLimit > 0 && inverter.getNumWaves() >= numWaveLimit) {
@@ -262,7 +193,6 @@ void TCC0_0_Handler() {
  * Handler for TCC1 OVF interrupts.
  */
 void TCC1_0_Handler() {
-  numTcc1_0_IrqRaw += 1;
   inverter.tccxHandler(1);
   
   if (numWaveLimit > 0 && inverter.getNumWaves() >= numWaveLimit) {
@@ -276,7 +206,6 @@ void TCC1_0_Handler() {
  * Handler for ADC0 RESRDY interrupt.
  */
 void ADC0_1_Handler() {
-  numAdc0_1_IrqRaw += 1;
   inverter.adc0Handler();
 }
 
@@ -284,13 +213,5 @@ void ADC0_1_Handler() {
  * Handler for ADC1 RESRDY interrupt.
  */
 void ADC1_1_Handler() {
-  numAdc1_1_IrqRaw += 1;
   inverter.adc1Handler();
-}
-
-void resetIrqCounts() {
-  numTcc0_0_IrqRaw = 0;
-  numTcc1_0_IrqRaw = 0;
-  numAdc0_1_IrqRaw = 0;
-  numAdc1_1_IrqRaw = 0;
 }
