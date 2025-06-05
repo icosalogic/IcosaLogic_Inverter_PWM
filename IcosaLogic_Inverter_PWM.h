@@ -109,14 +109,6 @@ enum I20InvArch {
   I20_DC              // half bridge DC-DC converter
 };
 
-/**! Specify what type, if any, half-wave signal is generated per output line.
- *   In a T-type inverter, this is useful for the high-side gate driver bootstrap circuit. */
-enum I20HalfWaveSignal {
-  I20_HWS_NONE,
-  I20_HWS_SINGLE,
-  I20_HWS_PAIR           // includes DTI between transitions
-};
-
 /**! Determines the output pins and TCC instance for the current platform */
 enum I20TccCfgNdx {
   I20_PS_NONE,
@@ -163,7 +155,6 @@ typedef struct {
 // Input parameters
 typedef struct {
   I20InvArch         invArch;                   // Inverter architecture
-  I20HalfWaveSignal  hws;                       // Half wave signal type
   float              outVoltage;                // target output voltage
   float              outCurrent;                // max output current
   uint8_t            numLines;                  // number of output lines
@@ -178,13 +169,11 @@ typedef struct {
 /**! Data used in the interrupt handlers to dynamically control scaling of the PWM duty cycle. */
 typedef struct {
   Tcc*               pwmTcc;                    // PWM TCC for this line
-  Tcc*               hwsTcc;                    // HWS TCC for this line
   I20FeedbackSignal* cfb;                       // current feedback
   I20FeedbackSignal* vfb;                       // voltage feedback
   uint16_t           aMaxDc;                    // Max current ADC reading for DC converter
   uint16_t           vMaxDc;                    // Max voltage ADC reading for DC converter
   uint16_t           chNum;                     // base channel number for this line
-  uint16_t           hwsChNum;                  // HWS channel number
   uint16_t           sineNdx;                   // index into reference sine wave array
   uint16_t           throttle;                  // applied to reference value to get target volts
   uint16_t           load;                      // applied to reference value to get target load 
@@ -277,7 +266,6 @@ protected:
   } I20PinData;
 
   const char* invArchNames[3] = {"HB", "TT", "DC"};
-  const char* halfWaveSignalNames[3] = {"none", "single", "pair"};
 
   static const int numFeedbackTypes = 9;
   const char* feedbackTypeNames[numFeedbackTypes] =
@@ -319,9 +307,6 @@ protected:
     int          linePair[4];         // HB lines alloced to this timer
     int          ch[6];               // channels alloced to this timer
     int          pin[8];              // single pins alloced to this timer
-    int          hwsPair[4];          // HWS pairs alloced to this timer
-    int          hwsCh[6];            // HWS channels alloced to this timer
-    int          hwsPin[8];           // HWS pins alloced to this timer
   } InverterTimerCfg;
   
 #include "platform.h"
@@ -487,11 +472,10 @@ protected:
   void setupOutputPins();
   void sumTimerResources();
   void setupTTLine(int lineNum);
-  void setupPinPair(int lineNum, char prefix, int ndx1, int ndx2);
-  bool setupPinPair(InverterTimerCfg* itc, int lineNum, char prefix, int ndx1, int ndx2);
-  void setupPin(int lineNum, char prefix, int pinNum);
-  void setupPin(InverterTimerCfg* itc, int lineNum, char prefix, int pinNum);
-  void setupOutputPin(InverterTimerCfg* itc, int pinNum, int lineNum, char prefix, int qNum);
+  void setupPinPair(int lineNum, int ndx1, int ndx2);
+  bool setupPinPair(InverterTimerCfg* itc, int lineNum, int ndx1, int ndx2);
+  void setupPin(InverterTimerCfg* itc, int lineNum, int pinNum);
+  void setupOutputPin(InverterTimerCfg* itc, int pinNum, int lineNum, int qNum);
   void setupSineWaveIndices();
   void checkNumSamples();
   void genSineWaveData();

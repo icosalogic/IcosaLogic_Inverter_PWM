@@ -17,7 +17,6 @@ int firstVariable = 4321;
 
 // Basic inverter configuration values
 const I20InvArch        invArch        = I20_T_TYPE;
-const I20HalfWaveSignal hws            = I20_HWS_NONE;
 const uint8_t           numLines       = 2;
 const uint16_t          outRmsVoltage  = 120;
 const uint16_t          outCurrent     = 50;
@@ -63,7 +62,6 @@ I20Feedback feedback = {adcNumBits, adcPrescale, adcSampleTicks, adcVRefNdx, def
                         {&vLine1, &vLine2, &aLine1, &aLine2, &vBattTop, &vBattMid }};
 
 I20InputParams defaultParams = {invArch,         // inverter architecture
-                                hws,             // half wave signal to generate
                                 outRmsVoltage,   // RMS voltage of output lines
                                 outCurrent,      // output current
                                 numLines,        // number of output lines
@@ -288,26 +286,25 @@ typedef struct {
 
 I20UnitTestInfo testInfo[] = {
   {testInvArchValid,                                "testInvArchValid"},                    // 0
-  {testHwsValid,                                    "testHwsValid"},                        // 1
   {testNumLinesInvalid,                             "testNumLinesInvalid"},
   {testNumLinesValid,                               "testNumLinesValid"},
   {testOutFreqInvalid,                              "testOutFreqInvalid"},
-  {testOutFreqValid,                                "testOutFreqValid"},                    // 5
+  {testOutFreqValid,                                "testOutFreqValid"},
   {testAdcNumBitsInvalid,                           "testAdcNumBitsInvalid"},
   {testAdcNumBitsValid,                             "testAdcNumBitsValid"},
   {testAdcPrescaleInvalid,                          "testAdcPrescaleInvalid"},
   {testAdcPrescaleValid,                            "testAdcPrescaleValid"},
-  {testAdcSampleTicksInvalid,                       "testAdcSampleTicksInvalid"},           // 10
+  {testAdcSampleTicksInvalid,                       "testAdcSampleTicksInvalid"},
   {testAdcSampleTicksValid,                         "testAdcSampleTicksValid"},
   {test50HzDeadTimeInvalid,                         "test50HzDeadTimeInvalid"},
   {test50HzDeadTimeValid,                           "test50HzDeadTimeValid"},
   {test60HzDeadTimeInvalid,                         "test60HzDeadTimeInvalid"},
-  {test60HzDeadTimeValid,                           "test60HzDeadTimeValid"},               // 15
+  {test60HzDeadTimeValid,                           "test60HzDeadTimeValid"},
   {testReusedAdcInputPinError,                      "testReusedAdcInputPinError"},
   {testNoFeedback,                                  "testNoFeedback"},
   {testNoFeedback50HzOutFreqTiming,                 "testNoFeedback50HzOutFreqTiming"},
   {testNoFeedback60HzOutFreqTiming,                 "testNoFeedback60HzOutFreqTiming"},
-  {testAdcSiblingDoPwmConflict,                     "testAdcSiblingDoPwmConflict"},         // 20
+  {testAdcSiblingDoPwmConflict,                     "testAdcSiblingDoPwmConflict"},
   {testAdcDoPwmMultiplePositions,                   "testAdcDoPwmMultiplePositions"},
   {testAdcDoPwmMultipleSchedules,                   "testAdcDoPwmMultipleSchedules"},
   {testAdcDoPwmNotSet,                              "testAdcDoPwmNotSet"},
@@ -371,28 +368,6 @@ bool testInvArchValid() {
     inverter.printErrors();
   }
   Serial.printf("    %6s -- testInvArchValid\n", testResult ? "PASSED" : "FAILED");
-  return testResult;
-}
-
-// Test that valid half wave signal (HWS) values are accepted.
-bool testHwsValid() {
-  I20HalfWaveSignal testValue[] = { I20_HWS_NONE, I20_HWS_SINGLE, I20_HWS_PAIR };
-  const int numTestValues = sizeof(testValue) / sizeof(I20HalfWaveSignal);
-
-  Serial.printf("    START  -- testHwsValid: testing %d values\n", numTestValues);
-
-  bool testResult = true;
-  for (int i = 0; i < numTestValues; i++) {
-    memcpy(&inParams, &defaultParams, sizeof(I20InputParams));
-    inParams.hws      = testValue[i];
-    inParams.invArch  = I20_HALF_BRIDGE;
-    inParams.numLines = 1;
-    inParams.feedback = NULL;
-    inverter.begin(&inParams);
-    testResult &= inverter.getNumErrors() == 0;
-    inverter.printErrors();
-  }
-  Serial.printf("    %6s -- testHwsValid\n", testResult ? "PASSED" : "FAILED");
   return testResult;
 }
 

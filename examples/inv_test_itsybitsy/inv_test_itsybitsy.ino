@@ -21,7 +21,6 @@ bool displayLog = false;
 
 // Basic inverter configuration values
 const I20InvArch        invArch        = I20_T_TYPE;
-const I20HalfWaveSignal hws            = I20_HWS_NONE;
 const uint8_t           numLines       = 1;
 const uint16_t          outRmsVoltage  = 120;
 const uint16_t          outCurrent     = 50;
@@ -77,7 +76,6 @@ I20Feedback fb_max          = {adcNumBits, adcPrescale, adcSampleTicks, adcVRefN
                                {&fbs0601, &fbs0602, &fbs0603, &fbs0604, &fbs0605, &fbs0606 }};
 
 I20InputParams defaultParams = {invArch,         // inverter architecture
-                                hws,             // half wave signal to generate
                                 outRmsVoltage,   // RMS voltage of output lines
                                 outCurrent,      // output current
                                 numLines,        // number of output lines

@@ -21,7 +21,6 @@
  * 
  * 
  * TODO:
- * - Delete half wave signal
  * - Save multiple feedback sets, use predictor to set throttle
  * - Desired output value
  * - Adjustable mid point
@@ -180,9 +179,8 @@ void IcosaLogic_Inverter_PWM::setupInput(I20InputParams* inParams) {
   // make a copy of all input parameters, then print them out
   memcpy(&inputParams, inParams, sizeof(I20InputParams));
   
-  Serial.printf("    arch %d [%s]  hws %d [%s]",
-                inParams->invArch, invArchNames[inParams->invArch], 
-                inParams->hws, halfWaveSignalNames[inParams->hws]);
+  Serial.printf("    arch %d [%s]",
+                inParams->invArch, invArchNames[inParams->invArch]);
   Serial.flush();
   Serial.print("  vOut ");
   Serial.print(inParams->outVoltage, 3);
@@ -256,11 +254,7 @@ void IcosaLogic_Inverter_PWM::setupBasics() {
 
 
 /**
- * Set up the hardware output pins.
- * 
- * There are 2 types of output signals:
- *     1. MOSFET gate signals
- *     2. Half wave signals (HWS) (high for the 1st half of the sine wave, low for the 2nd half).
+ * Set up the hardware output pins to generate MOSFET gate signals.
  * 
  * For each line, we set up the gate signal output pins according to the architecture type:
  *     - half-bridge: 1 pair [Q1,Q2] with configurable dead time insertion (DTI) between transitions
@@ -301,18 +295,15 @@ void IcosaLogic_Inverter_PWM::setupBasics() {
  * 2 channels.  I.e., channels 4 and 5 can't be used to generate output when channels 0 and 1
  * are used to generate output on pairs [0,4] and [1,5].
  * 
- * We optionally generate a half wave signal for each line.  This may be either a single pin
- * or a pair with DTI.
- * 
  * Common configurations:
  *     Half Bridge
  *         1 Line  -- L1 TCC1 [0,4]
  *         2 Lines -- L1 TCC1 [0,4]  L2 TCC1 [1,5]
  *         3 Lines -- L1 TCC1 [0,4]  L2 TCC1 [1,5]  L3 TCC1 [2,6]
  *     T-Type
- *         1 Line  -- L1 TCC1 [0,4],[1,5]                                            HWS TCC0 0 or [0,4]
- *         2 Lines -- L1 TCC1 [0,4],[1,5]  L2 TCC1 [2,6],[3,7]                       HWS TCC0 0 or [0,4]
- *         3 Lines -- L1 TCC1 [0,4],[1,5]  L2 TCC1 [2,6],[3,7]  L3 TCC0 [2,6],[3,7]  HWS TCC0 0, 1, 4
+ *         1 Line  -- L1 TCC1 [0,4],[1,5]
+ *         2 Lines -- L1 TCC1 [0,4],[1,5]  L2 TCC1 [2,6],[3,7]
+ *         3 Lines -- L1 TCC1 [0,4],[1,5]  L2 TCC1 [2,6],[3,7]  L3 TCC0 [2,6],[3,7]
  * 
  * Note that setting up the analog input pins for control is done in setupAdc().
  */
@@ -374,24 +365,7 @@ void IcosaLogic_Inverter_PWM::sumTimerResources() {
     timerCfgReq.numUsablePairs   += iNumLines * 2;
     timerCfgReq.numUsablePins    += iNumLines * 4;
   }
-  
-  // compute pins and pairs requested for optional half wave signal
-  if (inputParams.hws == I20_HWS_SINGLE) {
-    timerCfgReq.numUsablePins += iNumLines;
-  } else if (inputParams.hws == I20_HWS_PAIR) {
-    if (iNumLines <= 2) {
-      // Special case: need only 1 pair for either 1 or 2 lines
-      timerCfgReq.numUsableChs   += 1;
-      timerCfgReq.numUsablePairs += 1;
-      timerCfgReq.numUsablePins  += 2;
-    } else {
-      // use 1 pair each for 3 lines
-      timerCfgReq.numUsableChs   += iNumLines;
-      timerCfgReq.numUsablePairs += iNumLines;
-      timerCfgReq.numUsablePins  += iNumLines * 2;
-    }
-  }
-  
+
   Serial.printf("    output pin resources requested:  TT %d  CH %2d  pairs %2d  pins %2d\n",
                 timerCfgReq.numUsableTTLines, timerCfgReq.numUsableChs,
                 timerCfgReq.numUsablePairs, timerCfgReq.numUsablePins);
@@ -409,7 +383,7 @@ void IcosaLogic_Inverter_PWM::sumTimerResources() {
 }
 
 /**
- * Setup the output pins for line output, and half wave signals.
+ * Setup the output pins for line outputs.
  */
 void IcosaLogic_Inverter_PWM::setupOutputPins() {
   // Serial.printf("setupOutputPins: enter\n");
@@ -417,28 +391,9 @@ void IcosaLogic_Inverter_PWM::setupOutputPins() {
   // Allocate output pins
   for (int lineNum = 1; lineNum <= iNumLines; lineNum++) {
     if (inputParams.invArch != I20_T_TYPE) {
-      setupPinPair(lineNum, 'Q', 1, 2);
+      setupPinPair(lineNum, 1, 2);
     } else {
       setupTTLine(lineNum);
-    }
-  }
-  
-  // Allocate half wave signal (HWS) pins
-  // Serial.printf("\n    half wave signals\n");
-  if (inputParams.hws == I20_HWS_SINGLE) {
-    // alloc a single pin for each line
-    for (int lineNum = 1; lineNum <= iNumLines; lineNum++) {
-      setupPin(lineNum, 'H', 1);
-    }
-  } else if (inputParams.hws == I20_HWS_PAIR) {
-    if (iNumLines < 3) {
-      // special case, only 1 pair allocated for either 1 or 2 lines
-      setupPinPair(1, 'H', 1, 2);
-    } else {
-      // alloc a pair for each line
-      for (int lineNum = 1; lineNum <= iNumLines; lineNum++) {
-        setupPinPair(lineNum, 'H', 1, 2);
-      }
     }
   }
 }
@@ -455,8 +410,8 @@ void IcosaLogic_Inverter_PWM::setupTTLine(int lineNum) {
       if (itc->ttUsable[ttlNdx] && itc->lineTT[ttlNdx] == 0) {
         // found an unallocated TT line, mark TT and pairs as allocated to this lineNum
         itc->lineTT[ttlNdx] = lineNum;
-        setupPinPair(itc, lineNum, 'Q', 1, 3);
-        setupPinPair(itc, lineNum, 'Q', 4, 2);
+        setupPinPair(itc, lineNum, 1, 3);
+        setupPinPair(itc, lineNum, 4, 2);
         PerLineData* pld = &lines[lineNum - 1];
         pld->chNum -= 1;    // use the 1st channel allocated as the chNum
         return;
@@ -468,20 +423,20 @@ void IcosaLogic_Inverter_PWM::setupTTLine(int lineNum) {
 /**
  * Set up a pair of output pins.
  */
-void IcosaLogic_Inverter_PWM::setupPinPair(int lineNum, char prefix, int qNumA, int qNumB) {
+void IcosaLogic_Inverter_PWM::setupPinPair(int lineNum, int qNumA, int qNumB) {
   // Serial.printf("setupPinPair: enter\n");
   
   bool done = false;
   for (int tccNdx = 0; !done && tccNdx < 2; tccNdx++) {
     InverterTimerCfg* itc = timerCfgs[tccNdx];
-    done = setupPinPair(itc, lineNum, prefix, qNumA, qNumB);
+    done = setupPinPair(itc, lineNum, qNumA, qNumB);
   }
 }
   
 /**
  * Set up a pair of output pins.
  */
-bool IcosaLogic_Inverter_PWM::setupPinPair(InverterTimerCfg* itc, int lineNum, char prefix, int qNumA, int qNumB) {
+bool IcosaLogic_Inverter_PWM::setupPinPair(InverterTimerCfg* itc, int lineNum, int qNumA, int qNumB) {
   // Serial.printf("setupPinPair: 2 enter tccNum %d lineNum %d\n", itc->tccNum, lineNum);
   
   for (int pairNdx = 0; pairNdx < 4; pairNdx++) {
@@ -494,17 +449,10 @@ bool IcosaLogic_Inverter_PWM::setupPinPair(InverterTimerCfg* itc, int lineNum, c
         setError(I20_ERR_INVALID_TCCCFGNDX_VALUE);
         return false;
       } */
-      if (prefix == 'Q') {
-        // gate signal
-        pld->pwmTcc = tccs[itc->tccNum];
-        pld->chNum = pairNdx;
-      } else if (prefix == 'H') {
-        // half wave signal
-        pld->hwsTcc = tccs[itc->tccNum];
-        pld->hwsChNum = pairNdx;
-      }
-      setupOutputPin(itc, lineNum, pairNdx    , prefix, qNumA);
-      setupOutputPin(itc, lineNum, pairNdx + 4, prefix, qNumB);
+      pld->pwmTcc = tccs[itc->tccNum];
+      pld->chNum = pairNdx;
+      setupOutputPin(itc, lineNum, pairNdx    , qNumA);
+      setupOutputPin(itc, lineNum, pairNdx + 4, qNumB);
       return true;
     }
   }
@@ -512,40 +460,16 @@ bool IcosaLogic_Inverter_PWM::setupPinPair(InverterTimerCfg* itc, int lineNum, c
 }
   
 /**
- * Set up a single output pins.  Only used for HWS output.
- * Need to find unallocated channel, not pin!
- */
-void IcosaLogic_Inverter_PWM::setupPin(int lineNum, char prefix, int qNum) {
-  // Serial.printf("setupPin: enter\n");
-  
-  for (int tccNdx = 0; tccNdx < 2; tccNdx++) {
-    InverterTimerCfg* itc = timerCfgs[tccNdx];
-    for (int chNdx = 0; chNdx < itc->numUsableChs; chNdx++) {
-      if (itc->chUsable[chNdx] && itc->ch[chNdx] == 0 && itc->pin[chNdx] == 0) {
-        // found an unallocated TCC channel and pin
-        itc->ch[chNdx]  = lineNum;
-        itc->pin[chNdx] = lineNum;
-        setupOutputPin(itc, lineNum, chNdx, prefix, qNum);
-        PerLineData* pld = &lines[lineNum - 1];
-        pld->hwsTcc = tccs[itc->tccNum];
-        pld->hwsChNum = chNdx;
-        return;
-      }
-    }
-  }
-}
-
-/**
  * Set up a single output pin.  This code is extracted from analogWrite().
  */
-void IcosaLogic_Inverter_PWM::setupOutputPin(InverterTimerCfg* itc, int lineNum, int pinNdx, char prefix, int qNum) {
+void IcosaLogic_Inverter_PWM::setupOutputPin(InverterTimerCfg* itc, int lineNum, int pinNdx, int qNum) {
   // Serial.printf("setupOutputPin: enter tcc %d ioset %d\n", itc->tccNum, itc->iosetNum);
   TccIoset* ioset = tccIosets[itc->tccNum]->ioset[itc->iosetNum - 1];
   // char* pad = ioset->pads[pinNdx];
   int pinNum = itc->pinNums[pinNdx];
   
-  Serial.printf("    L%d %c%d output pin %2d: pad %s pioType 0x%x\n",
-                lineNum, prefix, qNum, pinNum, ioset->pads[pinNdx].pad, PIO_TIMER_ALT);
+  Serial.printf("    L%d Q%d output pin %2d: pad %s pioType 0x%x\n",
+                lineNum, qNum, pinNum, ioset->pads[pinNdx].pad, PIO_TIMER_ALT);
   
   itc->pin[pinNdx] = lineNum;                          // mark this pin as busy
   pinPeripheral(pinNum, PIO_TIMER_ALT);
@@ -894,24 +818,6 @@ void IcosaLogic_Inverter_PWM::setupTccChannels() {
       tcc->CC[tccCh + 1].reg = throttledSineValue + curFreqCfg->tccPeriod;
     }
     while (tcc->SYNCBUSY.vec.CC);
-    
-    // Set the initial value for the optional HWS output
-    
-    tcc   = pld->hwsTcc;
-    tccCh = pld->hwsChNum;
-    if (tcc != NULL) {
-      if (inputParams.deadTimeNs > 0 && inputParams.hws == I20_HWS_PAIR) {
-        // enable DTI for HWS pair
-        uint32_t wexctrl = tcc->WEXCTRL.reg;
-        wexctrl |= TCC_WEXCTRL_DTIEN0 << tccCh;
-        tcc->WEXCTRL.reg = wexctrl;
-      }
-    
-      uint32_t hwsValue = pld->sineNdx < numSamplesDiv2 ? curFreqCfg->tccPeriod : 0;
-      // Serial.printf("    HWS TCC %08x CH %d  initValue %d", tcc, tccCh, hwsValue);
-      tcc->CC[tccCh].reg = hwsValue;
-      while (tcc->SYNCBUSY.vec.CC);
-    }
   }
   // Serial.printf("\n");
 }
@@ -1673,14 +1579,6 @@ inline void IcosaLogic_Inverter_PWM::pwmHandler() {
         tcc->CCBUF[chNum    ].reg =  0;
         tcc->CCBUF[chNum + 1].reg = throttledSineValue + curFreqCfg->tccPeriod;
       }
-
-      // Set the value for the optional HWS output
-      tcc = pld->hwsTcc;
-      if (tcc != NULL) {
-        chNum = pld->hwsChNum;
-        uint32_t hwsValue = pld->sineNdx < numSamplesDiv2 ? curFreqCfg->tccPeriod : 0;
-        tcc->CCBUF[chNum    ].reg = hwsValue;
-      }
     }
 
     // prep for next cycle
@@ -1972,8 +1870,8 @@ void IcosaLogic_Inverter_PWM::dumpPerLineData() {
  * Dump a single PerLineData entry.
  */
 void IcosaLogic_Inverter_PWM::dumpPerLineDataEntry(uint8_t i, PerLineData* pld) {
-  Serial.printf("Line %d: pwmTcc=%08x pwmCh=%d hwsTcc=%08x hwsCh=%d ",
-                i + 1, pld->pwmTcc, pld->chNum, pld->hwsTcc, pld->hwsChNum);
+  Serial.printf("Line %d: pwmTcc=%08x pwmCh=%d ",
+                i + 1, pld->pwmTcc, pld->chNum);
   Serial.flush();
   Serial.printf("Ndx=%5d thr=%4d load=%d ",
                 pld->sineNdx, pld->throttle, pld->load);
