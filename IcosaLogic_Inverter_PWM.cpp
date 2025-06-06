@@ -1857,6 +1857,15 @@ bool IcosaLogic_Inverter_PWM::validateLog() {
 }
 
 /*
+ * Get the PerLineData entry for each active line.
+ */
+void IcosaLogic_Inverter_PWM::getPerLineData(PerLineData* pld) {
+  if (pld != NULL) {
+    memcpy(pld, &lines[0], sizeof(PerLineData) * iNumLines);
+  }
+}
+
+/*
  * Dump the PerLineData entry for each line.
  */
 void IcosaLogic_Inverter_PWM::dumpPerLineData() {

@@ -203,6 +203,8 @@ public:
   void start();
   void stop();
   bool isRunning();
+  uint32_t getNumWaves();
+  void getPerLineData(PerLineData* pld);    // copies out all active PerLineData entries
   
   unsigned int getNumErrors();
   const char* getErrorText(int errIndex);
@@ -215,7 +217,7 @@ public:
   void adc1Handler();
   void dumpIrqCounts(bool reset);
   
-  uint32_t getNumWaves();
+  // Dump and logging
   void dumpScaledSineData(bool atZero);
   void dumpLog(bool verbose);
   void dumpLogTail(bool verbose);
